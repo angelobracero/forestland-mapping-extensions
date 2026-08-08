@@ -1,0 +1,7 @@
+{
+  "name": "forestland-mapping-extensions",
+  "type": "exb-web-extension-repo",
+  "description": "Forestland Evaluation and Mapping Project Extensions",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0"
+}
