@@ -1,0 +1,23 @@
+{
+  "name": "lcmap-filter",
+  "label": "LC Map Filter",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "A widget that displays a filter for LC maps.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {},
+  "useMapWidgetIds": true,
+  "translatedLocales": [
+    "en"
+  ],
+  "dependency": [
+    "jimu-arcgis"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 500
+  }
+}
