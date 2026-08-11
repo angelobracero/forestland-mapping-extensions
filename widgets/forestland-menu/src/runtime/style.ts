@@ -27,17 +27,6 @@ export const navItemStyle = css({
   }
 })
 
-export const lcMapStyle = css({
-  position: 'absolute',
-  top: '100%',
-  marginLeft: '10px',
-  backgroundColor: '#a76287',
-  zIndex: 1000,
-})
-
-
-
-
 
 
 

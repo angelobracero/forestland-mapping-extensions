@@ -14,37 +14,20 @@ import {
   titleStyle,
 } from "./style";
 
-// ============================================================
-// TYPES
-// ============================================================
-
 type LcMap = {
   region: string;
   province: string;
+  lc_number: string;
   item_id: string;
 };
 
-// ============================================================
-// PORTAL
-// ============================================================
-
 esriConfig.portalUrl = "https://geospatial.namria.gov.ph/portal";
-
-// ============================================================
-// LC MAP CATALOG
-// ============================================================
 
 const catalogLayer = new FeatureLayer({
   portalItem: {
-    id: "f21892f001e5428993cad5b704a0c594",
+    id: "7fb9324349ae4c01b4efcb06d09e79ce",
   },
 });
-
-// ============================================================
-// COMMENT LAYER
-//
-// This is the editable layer.
-// ============================================================
 
 const commentLayer = new FeatureLayer({
   portalItem: {
@@ -52,23 +35,12 @@ const commentLayer = new FeatureLayer({
   },
 });
 
-// ============================================================
-// WIDGET
-// ============================================================
-
 function Widget(props: AllWidgetProps<any>) {
-  // ==========================================================
-  // STATE
-  // ==========================================================
-
   const [lcMaps, setLcMaps] = useState<LcMap[]>([]);
-
   const [selectedRegion, setSelectedRegion] = useState<string>("");
-
   const [selectedProvince, setSelectedProvince] = useState<string>("");
-
+  const [selectedLcNumber, setSelectedLcNumber] = useState<string>("");
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null);
-
   const [currentLcLayer, setCurrentLcLayer] = useState<FeatureLayer | null>(
     null,
   );
@@ -95,6 +67,7 @@ function Widget(props: AllWidgetProps<any>) {
         const maps: LcMap[] = result.features.map((feature) => ({
           region: feature.attributes.region,
           province: feature.attributes.province,
+          lc_number: feature.attributes.lc_number,
           item_id: feature.attributes.item_id,
         }));
 
@@ -115,10 +88,6 @@ function Widget(props: AllWidgetProps<any>) {
 
   const regions = [...new Set(lcMaps.map((map) => map.region))];
 
-  // ==========================================================
-  // PROVINCES
-  // ==========================================================
-
   const provinces = [
     ...new Set(
       lcMaps
@@ -127,10 +96,19 @@ function Widget(props: AllWidgetProps<any>) {
     ),
   ];
 
+  const lcMapNumbers = [
+    ...new Set(
+      lcMaps
+        .filter(
+          (map) =>
+            map.region === selectedRegion && map.province === selectedProvince,
+        )
+        .map((map) => map.lc_number),
+    ),
+  ];
+
   // ==========================================================
-  // ENSURE EXPERIENCE BUILDER DATA SOURCE
-  //
-  // This is the important part for the Edit widget.
+  // EXPERIENCE BUILDER DATA SOURCE
   // ==========================================================
 
   const ensureLayerDataSource = async (layer: FeatureLayer) => {
@@ -145,19 +123,11 @@ function Widget(props: AllWidgetProps<any>) {
     try {
       console.log("Looking for JimuLayerView:", layer.title);
 
-      // ------------------------------------------------------
-      // FIRST: check if JimuLayerView already exists
-      // ------------------------------------------------------
-
       let jimuLayerView = jimuMapView.getJimuLayerViewByAPILayer(layer);
 
       if (jimuLayerView) {
         console.log("JimuLayerView already exists:", layer.title);
       }
-
-      // ------------------------------------------------------
-      // SECOND: if it does not exist yet, wait for it
-      // ------------------------------------------------------
 
       if (!jimuLayerView) {
         console.log("JimuLayerView not ready yet. Waiting...");
@@ -267,8 +237,6 @@ function Widget(props: AllWidgetProps<any>) {
 
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
-
-    // Reset province
     setSelectedProvince("");
   };
 
@@ -278,16 +246,19 @@ function Widget(props: AllWidgetProps<any>) {
 
   const handleProvinceChange = async (province: string) => {
     setSelectedProvince(province);
+    setSelectedLcNumber("");
+  };
 
+  // ==========================================================
+  // LC NUMBER CHANGE
+  // ==========================================================
+
+  const handleLcNumberChange = async (lc_number: string) => {
+    setSelectedLcNumber(lc_number);
     console.log("================================");
-
-    console.log("Province selected:", province);
-
     console.log("Region selected:", selectedRegion);
-
-    // ========================================================
-    // CHECK MAP
-    // ========================================================
+    console.log("Province selected:", selectedProvince);
+    console.log("LC Number selected:", lc_number);
 
     if (!jimuMapView?.view?.map) {
       console.error("JimuMapView is not available.");
@@ -297,29 +268,28 @@ function Widget(props: AllWidgetProps<any>) {
 
     const map = jimuMapView.view.map;
 
-    // ========================================================
-    // FIND LC MAP
-    // ========================================================
-
     const selectedMap = lcMaps.find(
-      (item) => item.region === selectedRegion && item.province === province,
+      (item) =>
+        item.region === selectedRegion &&
+        item.province === selectedProvince &&
+        item.lc_number === lc_number,
     );
 
     if (!selectedMap) {
-      console.error("No LC Map found for:", selectedRegion, province);
+      console.error(
+        "No LC Map found for:",
+        selectedRegion,
+        selectedProvince,
+        lc_number,
+      );
 
       return;
     }
 
     console.log("Selected LC Map:", selectedMap);
-
     console.log("LC Map Item ID:", selectedMap.item_id);
 
     try {
-      // ======================================================
-      // 1. REMOVE PREVIOUS LC MAP
-      // ======================================================
-
       if (currentLcLayer) {
         console.log("Removing previous LC map:", currentLcLayer.title);
 
@@ -387,9 +357,9 @@ function Widget(props: AllWidgetProps<any>) {
       // 8. FILTER COMMENTS
       // ======================================================
 
-      const escapedProvince = province.replace(/'/g, "''");
+      const escapedLcNumber = lc_number.replace(/'/g, "''");
 
-      commentLayer.definitionExpression = `province = '${escapedProvince}'`;
+      commentLayer.definitionExpression = `lc_number = '${escapedLcNumber}'`;
 
       console.log(
         "Comment definition expression:",
@@ -435,9 +405,9 @@ function Widget(props: AllWidgetProps<any>) {
 
       console.log("================================");
 
-      console.log("PROVINCE LOAD COMPLETE");
+      console.log("LC NUMBER LOAD COMPLETE");
 
-      console.log("Province:", province);
+      console.log("LC Number:", lc_number);
 
       console.log("LC Map:", lcLayer.title);
 
@@ -522,6 +492,29 @@ function Widget(props: AllWidgetProps<any>) {
               {provinces.map((province) => (
                 <Option key={province} value={province}>
                   {province}
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          {/* =================================================
+              LC MAP NUMBER
+              ================================================= */}
+
+          <div css={provinceFilterStyle}>
+            <label>Lc Map Number</label>
+
+            <Select
+              value={selectedLcNumber}
+              disabled={!selectedRegion}
+              onChange={(event) => {
+                handleLcNumberChange(event.target.value);
+              }}
+              placeholder="Select a Lc Map Number"
+            >
+              {lcMapNumbers.map((number) => (
+                <Option key={number} value={number}>
+                  {number}
                 </Option>
               ))}
             </Select>
