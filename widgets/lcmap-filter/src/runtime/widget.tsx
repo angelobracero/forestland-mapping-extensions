@@ -45,10 +45,7 @@ function Widget(props: AllWidgetProps<any>) {
     null,
   );
 
-  // ==========================================================
-  // LOAD LC MAP CATALOG
-  // ==========================================================
-
+  // LOAD LC MAPS
   useEffect(() => {
     const loadCatalog = async () => {
       try {
@@ -59,7 +56,7 @@ function Widget(props: AllWidgetProps<any>) {
         const query = catalogLayer.createQuery();
 
         query.where = "1=1";
-        query.outFields = ["region", "province", "item_id"];
+        query.outFields = ["region", "province", "lc_number", "item_id"];
         query.returnGeometry = false;
 
         const result = await catalogLayer.queryFeatures(query);
@@ -184,11 +181,8 @@ function Widget(props: AllWidgetProps<any>) {
       }
 
       console.log("JimuLayerView found:", jimuLayerView);
-
       console.log("JimuLayerView ID:", jimuLayerView.id);
-
       console.log("Layer Data Source ID:", jimuLayerView.layerDataSourceId);
-
       console.log("From Runtime:", jimuLayerView.fromRuntime);
 
       // ------------------------------------------------------
@@ -231,27 +225,17 @@ function Widget(props: AllWidgetProps<any>) {
     }
   };
 
-  // ==========================================================
-  // REGION CHANGE
-  // ==========================================================
-
+  // Region, Province, and LC Number change handlers
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
     setSelectedProvince("");
+    setSelectedLcNumber("");
   };
-
-  // ==========================================================
-  // PROVINCE CHANGE
-  // ==========================================================
 
   const handleProvinceChange = async (province: string) => {
     setSelectedProvince(province);
     setSelectedLcNumber("");
   };
-
-  // ==========================================================
-  // LC NUMBER CHANGE
-  // ==========================================================
 
   const handleLcNumberChange = async (lc_number: string) => {
     setSelectedLcNumber(lc_number);
@@ -298,78 +282,46 @@ function Widget(props: AllWidgetProps<any>) {
         setCurrentLcLayer(null);
       }
 
-      // ======================================================
-      // 2. CREATE LC MAP
-      // ======================================================
-
+      // Create LC Map layer
       const lcLayer = new FeatureLayer({
         portalItem: {
           id: selectedMap.item_id,
         },
       });
 
-      // ======================================================
-      // 3. LOAD LC MAP
-      // ======================================================
-
+      // Load map
       await lcLayer.load();
-
       console.log("LC Map loaded:", lcLayer.title);
 
-      // ======================================================
-      // 4. ADD LC MAP TO EXISTING MAP
-      // ======================================================
-
+      // Add lc map to the map
       map.add(lcLayer);
-
       setCurrentLcLayer(lcLayer);
-
       console.log("LC Map added:", lcLayer.title);
 
-      // ======================================================
-      // 5. REGISTER LC MAP WITH EXPERIENCE BUILDER
-      //
-      // This allows other Experience Builder widgets to
-      // recognize the runtime layer.
-      // ======================================================
-
+      // Register LC Map with Experience Builder
       await ensureLayerDataSource(lcLayer);
 
-      // ======================================================
-      // 6. ZOOM TO LC MAP
-      // ======================================================
-
+      // Zoom to LC Map extent
       if (lcLayer.fullExtent) {
         await jimuMapView.view.goTo(lcLayer.fullExtent.expand(1.05));
 
         console.log("Zoomed to LC Map.");
       }
 
-      // ======================================================
-      // 7. LOAD COMMENT LAYER
-      // ======================================================
-
+      // Load comment layer
       await commentLayer.load();
-
       console.log("Comment layer loaded:", commentLayer.title);
 
-      // ======================================================
-      // 8. FILTER COMMENTS
-      // ======================================================
+      // Filter Comments
+      // const escapedLcNumber = lc_number.replace(/'/g, "''");
+      // commentLayer.definitionExpression = `lc_number = '${escapedLcNumber}'`;
 
-      const escapedLcNumber = lc_number.replace(/'/g, "''");
+      // console.log(
+      //   "Comment definition expression:",
+      //   commentLayer.definitionExpression,
+      // );
 
-      commentLayer.definitionExpression = `lc_number = '${escapedLcNumber}'`;
-
-      console.log(
-        "Comment definition expression:",
-        commentLayer.definitionExpression,
-      );
-
-      // ======================================================
-      // 9. ADD COMMENT LAYER
-      // ======================================================
-
+      // Add comment layer
       if (!map.layers.includes(commentLayer)) {
         map.add(commentLayer);
 
@@ -381,39 +333,25 @@ function Widget(props: AllWidgetProps<any>) {
       // Make sure comments are visible
       commentLayer.visible = true;
 
-      // ======================================================
-      // 10. REGISTER COMMENT LAYER WITH EXPERIENCE BUILDER
-      //
-      // THIS IS THE MOST IMPORTANT PART FOR EDITING.
-      // ======================================================
-
+      // Register Comment Layer with Experience Builder
       await ensureLayerDataSource(commentLayer);
 
-      // ======================================================
-      // 11. KEEP COMMENTS ABOVE LC MAP
-      // ======================================================
-
+      // 11. Keep comments above LC Map in the layer list
       const commentIndex = map.layers.indexOf(commentLayer);
 
       if (commentIndex !== -1) {
         map.reorder(commentLayer, map.layers.length - 1);
       }
 
-      // ======================================================
-      // COMPLETE
-      // ======================================================
-
+      // Check
+      console.log("");
       console.log("================================");
-
       console.log("LC NUMBER LOAD COMPLETE");
-
       console.log("LC Number:", lc_number);
-
       console.log("LC Map:", lcLayer.title);
-
       console.log("Comments:", commentLayer.title);
-
       console.log("================================");
+      console.log("");
     } catch (error) {
       console.error("FAILED TO LOAD LC MAP OR COMMENTS:", error);
     }
@@ -461,8 +399,8 @@ function Widget(props: AllWidgetProps<any>) {
 
             <Select
               value={selectedRegion}
-              onChange={(event) => {
-                handleRegionChange(event.target.value);
+              onChange={(e) => {
+                handleRegionChange(e.target.value);
               }}
               placeholder="Select a Region"
             >
@@ -484,8 +422,8 @@ function Widget(props: AllWidgetProps<any>) {
             <Select
               value={selectedProvince}
               disabled={!selectedRegion}
-              onChange={(event) => {
-                handleProvinceChange(event.target.value);
+              onChange={(e) => {
+                handleProvinceChange(e.target.value);
               }}
               placeholder="Select a Province"
             >
@@ -507,8 +445,8 @@ function Widget(props: AllWidgetProps<any>) {
             <Select
               value={selectedLcNumber}
               disabled={!selectedRegion}
-              onChange={(event) => {
-                handleLcNumberChange(event.target.value);
+              onChange={(e) => {
+                handleLcNumberChange(e.target.value);
               }}
               placeholder="Select a Lc Map Number"
             >
