@@ -1,0 +1,19 @@
+{
+  "name": "body-section",
+  "label": "Body Section",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "A widget that displays a body section with a title and content on Home Page.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {},
+  "translatedLocales": [
+    "en"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 500
+  }
+}
