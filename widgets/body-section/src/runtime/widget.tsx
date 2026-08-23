@@ -1,14 +1,94 @@
-import { type AllWidgetProps } from "jimu-core";
+import { type AllWidgetProps, UrlManager, getAppStore } from "jimu-core";
 import { Paper } from "jimu-ui";
 
-import { divStyle, titleStyle, paragraphStyle } from "./style";
+import {
+  heroStyle,
+  heroOverlayStyle,
+  heroContentStyle,
+  heroTitleStyle,
+  heroTitleUnderlineStyle,
+  containerStyle,
+  statsRowStyle,
+  statCardStyle,
+  statNumberStyle,
+  statLabelStyle,
+  contentCardStyle,
+  titleStyle,
+  paragraphStyle,
+  quickLinksHeaderStyle,
+  quickLinksTitleStyle,
+  quickLinksSubtitleStyle,
+  quickLinksGridStyle,
+  quickLinkCardStyle,
+  quickLinkIconStyle,
+  quickLinkLabelStyle,
+  quickLinkArrowStyle,
+} from "./style";
+
+// A resized/compressed copy of home-bg.png, used so the hero image
+// doesn't balloon the widget bundle (the original is ~5.8MB; this is
+// ~460KB at a size that still looks sharp as a hero background).
+const homeBg = require("./assets/home-bg-hero.jpg");
+
+const heroTitleText = (
+  <>
+    Forestland Evaluation &amp; Mapping Project: Land Classification
+    Survey of Unclassified Public Forests
+  </>
+);
+
+const stats = [
+  { number: "798,000 ha", label: "Unclassified Public Forests remaining to be classified" },
+  { number: "DAO No. 31, s. 1988", label: "Legal basis for land classification, implementing E.O. 192" },
+  { number: "LCD - RDAB", label: "Land Classification Division, Resource Data Analysis Branch" },
+];
+
+// Pages are looked up by label, same as in forestland-menu, so these
+// links keep working even if a page's id changes in the builder.
+const quickLinks = [
+  { icon: "\u{1F3DE}\u{FE0F}", label: "Gender and Development" },
+  { icon: "\u{1F4F8}", label: "LCD in Action" },
+  { icon: "\u{1F5FA}\u{FE0F}", label: "Proposed LC Maps" },
+  { icon: "\u{1F4AC}", label: "View Feedbacks" },
+  { icon: "\u{1F4D8}", label: "Guides and Tutorials" },
+  { icon: "\u{2139}\u{FE0F}", label: "About" },
+];
 
 function Widget(props: AllWidgetProps<any>) {
+  const goToPage = (pageLabel: string) => {
+    const { pages } = getAppStore().getState().appConfig;
+    const page = Object.values(pages).find((p) => p.label === pageLabel);
+
+    if (!page) {
+      console.warn(`body-section: no page found named "${pageLabel}".`);
+
+      return;
+    }
+
+    UrlManager.getInstance().changePage(page.id);
+  };
+
   return (
     <Paper className="jimu-widget" component="main">
-      <section></section>
-      <section>
-        <div css={divStyle}>
+      <div css={heroStyle} style={{ backgroundImage: `url(${homeBg})` }}>
+        <div css={heroOverlayStyle} />
+        <div css={heroContentStyle}>
+          <h1 css={heroTitleStyle}>{heroTitleText}</h1>
+          <div css={heroTitleUnderlineStyle} />
+        </div>
+      </div>
+
+      <div css={containerStyle}>
+        <div css={statsRowStyle}>
+          {stats.map((stat) => (
+            <div key={stat.label} css={statCardStyle}>
+              <div css={statNumberStyle}>{stat.number}</div>
+              <div css={statLabelStyle}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div css={contentCardStyle}>
           <h2 css={titleStyle}>
             Mapping the Future of the Philippines' Public Lands
           </h2>
@@ -65,7 +145,8 @@ function Widget(props: AllWidgetProps<any>) {
             stakeholders, and the general public.
           </p>
         </div>
-        <div>
+
+        <div css={contentCardStyle}>
           <h2 css={titleStyle}>
             Building a Reliable Foundation for Sustainable Land Management
           </h2>
@@ -77,7 +158,30 @@ function Widget(props: AllWidgetProps<any>) {
             sustainable development of the Philippines.
           </p>
         </div>
-      </section>
+
+        <div>
+          <div css={quickLinksHeaderStyle}>
+            <h2 css={quickLinksTitleStyle}>Explore the Site</h2>
+            <p css={quickLinksSubtitleStyle}>
+              Jump straight to what you're looking for.
+            </p>
+          </div>
+
+          <div css={quickLinksGridStyle}>
+            {quickLinks.map((link) => (
+              <div
+                key={link.label}
+                css={quickLinkCardStyle}
+                onClick={() => goToPage(link.label)}
+              >
+                <span css={quickLinkIconStyle}>{link.icon}</span>
+                <span css={quickLinkLabelStyle}>{link.label}</span>
+                <span css={quickLinkArrowStyle}>&#8594;</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </Paper>
   );
 }

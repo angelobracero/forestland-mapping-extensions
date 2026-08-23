@@ -1,40 +1,49 @@
-import {css} from "jimu-core";
+import { css } from "jimu-core";
 
-export const sidebarStyle = css({
+export const headerStyle = css({
   display: 'flex',
-  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
   height: '100%',
   width: '100%',
+  padding: '0 20px',
+  background: 'linear-gradient(90deg, #0b5e2e 0%, #0d7a3a 100%)',
+  borderBottom: '3px solid #ffcc00',
+  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+  boxSizing: 'border-box',
 })
 
 export const navStyle = css({
-
-  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '2px',
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
 })
 
-export const navListStyle = css({
-  display: 'flex',
+export const navItemStyle = css({
   listStyleType: 'none',
-  padding: 0,
-  gap: 0,
-  textAlign: 'center',
 })
 
 export const navLinkStyle = css({
-  padding: '10px',
+  display: 'inline-block',
+  padding: '8px 14px',
+  borderRadius: '6px',
+  color: '#fff',
+  fontSize: '0.9rem',
+  fontWeight: 500,
+  whiteSpace: 'nowrap',
   cursor: 'pointer',
-  position: 'relative',
-  backgroundColor: '#007f00',
-  flex: 1,
+  textDecoration: 'none',
+  transition: 'background-color 0.2s ease',
 
   '&:hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     color: '#fff',
-    opacity: 0.8,
-  }
+  },
+
+  '&:focus-visible': {
+    outline: '2px solid #ffcc00',
+    outlineOffset: '2px',
+  },
 })
-
-
-
-
-
-

@@ -1,0 +1,15 @@
+{
+  "name": "forestland",
+  "label": "Forestland",
+  "type": "theme",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "NAMRIA Forestland Evaluation and Mapping Project brand theme: forest green primary, gold accent, rounded cards.",
+  "copyright": "",
+  "license": "MIT",
+  "translatedLocales": [
+    "en"
+  ],
+  "isNewTheme": true
+}

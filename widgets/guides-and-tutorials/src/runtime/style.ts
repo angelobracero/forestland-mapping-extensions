@@ -1,0 +1,227 @@
+import { css } from "jimu-core";
+
+export const containerStyle = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '56px',
+  maxWidth: '980px',
+  margin: '0 auto',
+  padding: '56px 24px',
+  boxSizing: 'border-box',
+})
+
+export const headerStyle = css({
+  textAlign: 'center',
+})
+
+export const titleStyle = css({
+  fontSize: '2.25rem',
+  fontWeight: 700,
+  color: '#0b5e2e',
+  lineHeight: 1.3,
+  margin: 0,
+
+  '@media (max-width: 600px)': {
+    fontSize: '1.6rem',
+  },
+})
+
+export const dividerStyle = css({
+  width: '64px',
+  height: '4px',
+  borderRadius: '2px',
+  backgroundColor: '#ffcc00',
+  margin: '16px auto 0',
+})
+
+export const subtitleStyle = css({
+  fontSize: '1.05rem',
+  color: '#555',
+  marginTop: '16px',
+  maxWidth: '640px',
+  marginLeft: 'auto',
+  marginRight: 'auto',
+  lineHeight: 1.6,
+})
+
+// ------------------------------------------------------------------
+// Section 1: Introduction / feature overview
+// ------------------------------------------------------------------
+
+export const sectionStyle = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '24px',
+})
+
+export const sectionTitleStyle = css({
+  fontSize: '1.6rem',
+  fontWeight: 700,
+  color: '#0b5e2e',
+  margin: 0,
+})
+
+export const sectionIntroStyle = css({
+  fontSize: '1rem',
+  color: '#444',
+  lineHeight: 1.7,
+  margin: 0,
+  maxWidth: '760px',
+})
+
+export const featureGridStyle = css({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+  gap: '20px',
+})
+
+export const featureCardStyle = css({
+  backgroundColor: '#fff',
+  borderRadius: '10px',
+  padding: '20px',
+  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+})
+
+export const featureIconStyle = css({
+  fontSize: '1.8rem',
+})
+
+export const featureTitleStyle = css({
+  fontSize: '0.98rem',
+  fontWeight: 700,
+  color: '#222',
+  margin: 0,
+})
+
+export const featureDescStyle = css({
+  fontSize: '0.85rem',
+  color: '#666',
+  lineHeight: 1.55,
+  margin: 0,
+})
+
+// ------------------------------------------------------------------
+// Section 2: Step-by-step tutorial
+// ------------------------------------------------------------------
+
+export const stepListStyle = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '28px',
+})
+
+// Two even columns that swap sides per step (handled by swapping the
+// actual element order in widget.tsx, not just column widths) and wrap
+// to a single stacked column once they can no longer fit side by side.
+export const stepRowStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: '28px',
+})
+
+// A small "mock browser" card used as a stand-in for a real screenshot.
+export const mockBrowserStyle = css({
+  flex: '1 1 320px',
+  minWidth: 0,
+  borderRadius: '10px',
+  overflow: 'hidden',
+  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+  backgroundColor: '#fff',
+  border: '1px solid #e6e6e6',
+})
+
+export const mockBrowserChromeStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '8px 10px',
+  backgroundColor: '#f0f0f0',
+  borderBottom: '1px solid #e2e2e2',
+})
+
+export const mockBrowserDotStyle = css({
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+})
+
+export const mockBrowserContentStyle = css({
+  aspectRatio: '16 / 10',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px',
+  padding: '20px 16px',
+  textAlign: 'center',
+  background: 'linear-gradient(180deg, #f7faf8 0%, #eef4ef 100%)',
+})
+
+export const mockBrowserIconStyle = css({
+  fontSize: '1.8rem',
+})
+
+export const mockBrowserCaptionStyle = css({
+  fontSize: '0.78rem',
+  color: '#0b5e2e',
+  fontWeight: 600,
+  lineHeight: 1.4,
+})
+
+export const stepContentStyle = css({
+  flex: '1 1 320px',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+})
+
+export const stepHeaderStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+})
+
+export const stepNumberBadgeStyle = css({
+  flexShrink: 0,
+  width: '30px',
+  height: '30px',
+  borderRadius: '50%',
+  backgroundColor: '#0b5e2e',
+  color: '#fff',
+  fontSize: '0.9rem',
+  fontWeight: 700,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+})
+
+export const stepTitleStyle = css({
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  color: '#222',
+  margin: 0,
+})
+
+export const stepDescStyle = css({
+  fontSize: '0.92rem',
+  color: '#555',
+  lineHeight: 1.65,
+  margin: 0,
+})
+
+export const noteBoxStyle = css({
+  display: 'flex',
+  gap: '10px',
+  backgroundColor: '#fff8e1',
+  border: '1px solid #ffe08a',
+  borderRadius: '8px',
+  padding: '14px 16px',
+  fontSize: '0.88rem',
+  color: '#6b5300',
+  lineHeight: 1.6,
+})

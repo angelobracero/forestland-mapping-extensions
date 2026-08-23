@@ -1,0 +1,19 @@
+{
+  "src": {
+    "primary": {
+      "color": "#0b5e2e",
+      "harmonize": true
+    },
+    "secondary": {
+      "color": "#ffcc00",
+      "harmonize": true
+    }
+  },
+  "sys": {
+    "shape": {
+      "shape1": "10px",
+      "shape2": "10px",
+      "inputField": "6px"
+    }
+  }
+}

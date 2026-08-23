@@ -1,0 +1,31 @@
+{
+  "name": "custom-editor",
+  "label": "Custom Editor",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "A widget that displays a custom editor.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {
+    "hasEmbeddedLayout": true
+  },
+  "translatedLocales": [
+    "en"
+  ],
+  "dependency": [
+    "jimu-arcgis"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 500
+  },
+  "layouts": [
+    {
+      "name": "DEFAULT",
+      "label": "Default",
+      "type": "FIXED"
+    }
+  ]
+}

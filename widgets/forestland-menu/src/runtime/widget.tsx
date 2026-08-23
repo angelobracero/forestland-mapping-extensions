@@ -1,44 +1,47 @@
-import { type AllWidgetProps } from "jimu-core";
-import { Paper, WidgetPlaceholder, Nav, NavLink } from "jimu-ui";
-const person = require("./assets/person.svg");
+import { type AllWidgetProps, UrlManager, getAppStore } from "jimu-core";
+import { Paper, Nav, NavItem, NavLink } from "jimu-ui";
 
-import { sidebarStyle, navStyle, navLinkStyle } from "./style";
+import { headerStyle, navStyle, navItemStyle, navLinkStyle } from "./style";
+
+// Pages are looked up by their label (the page name shown in the builder)
+// instead of a hardcoded page id, so renaming a page or regenerating its id
+// in the builder doesn't break this nav. Keep these in sync with the page
+// labels used in the app.
+const navLinks = [
+  "Home",
+  "About",
+  "Gender and Development",
+  "LCD in Action",
+  "Guides and Tutorials",
+  "Proposed LC Maps",
+  "View Feedbacks",
+];
 
 function Widget(props: AllWidgetProps<any>) {
+  const goToPage = (pageLabel: string) => {
+    const { pages } = getAppStore().getState().appConfig;
+    const page = Object.values(pages).find((p) => p.label === pageLabel);
+
+    if (!page) {
+      console.warn(`forestland-menu: no page found named "${pageLabel}".`);
+
+      return;
+    }
+
+    UrlManager.getInstance().changePage(page.id);
+  };
+
   return (
-    <Paper css={sidebarStyle} className="jimu-widget" component="header">
-      {/* <div css={imageContainerStyle}>
-        <img src={namriaLogo} alt="NAMRIA" css={imageStyle} />
-      </div> */}
-      <div>
-        <WidgetPlaceholder icon={person} />
-      </div>
+    <Paper css={headerStyle} className="jimu-widget" component="header">
       <Nav css={navStyle}>
-        <NavLink css={navLinkStyle}>Home</NavLink>
-        <NavLink css={navLinkStyle}>About</NavLink>
-        <NavLink css={navLinkStyle}>Gender and Development</NavLink>
-        <NavLink css={navLinkStyle}>LCD in Action</NavLink>
-        <NavLink css={navLinkStyle}>Guides and Tutorials</NavLink>
-        <NavLink css={navLinkStyle}>Proposed LC Maps</NavLink>
-        <NavLink css={navLinkStyle}>View Feedbacks</NavLink>
+        {navLinks.map((label) => (
+          <NavItem key={label} css={navItemStyle}>
+            <NavLink css={navLinkStyle} onClick={() => goToPage(label)}>
+              {label}
+            </NavLink>
+          </NavItem>
+        ))}
       </Nav>
-      {/* <Nav css={navStyle}>
-          <ul css={navListStyle}>
-            <li css={navItemStyle}>Home</li>
-
-            <li css={navItemStyle}>About</li>
-
-            <li css={navItemStyle}>Gender and Development</li>
-
-            <li css={navItemStyle}>LCD in Action</li>
-
-            <li css={navItemStyle}>Guides and Tutorials</li>
-
-            <li css={navItemStyle}>Proposed LC Maps</li>
-
-            <li css={navItemStyle}>View Feedbacks</li>
-          </ul>
-        </Nav> */}
     </Paper>
   );
 }
