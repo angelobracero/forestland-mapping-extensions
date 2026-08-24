@@ -31,9 +31,6 @@ import {
   noteBoxStyle,
 } from "./style";
 
-// Overview of the app's main features, shown as a simple card grid.
-// Mirrors what's actually available in the menu: Home, Proposed LC Maps,
-// Gender and Development, LCD in Action, and View Feedbacks.
 const features = [
   {
     icon: "\u{1F5FA}\u{FE0F}",
@@ -73,14 +70,6 @@ const features = [
   },
 ];
 
-// Placeholder "screenshots" of the actual Region -> Province -> LC Number
-// workflow already implemented in the lcmap-filter widget, plus the
-// comment submission flow that pairs with the Comment feature layer.
-//
-// TODO: swap these mock-browser panels for real screenshots once the app
-// is ready to demo, and confirm step 6 once a dedicated "Add Comment"
-// tool/widget exists (right now the comment layer is loaded on the map,
-// but a click-to-comment tool hasn't been built yet).
 const steps = [
   {
     icon: "\u{1F5FA}\u{FE0F}",
@@ -137,9 +126,18 @@ function MockBrowser(props: { icon: string; caption: string }) {
   return (
     <div css={mockBrowserStyle}>
       <div css={mockBrowserChromeStyle}>
-        <span css={mockBrowserDotStyle} style={{ backgroundColor: "#ff5f57" }} />
-        <span css={mockBrowserDotStyle} style={{ backgroundColor: "#febc2e" }} />
-        <span css={mockBrowserDotStyle} style={{ backgroundColor: "#28c840" }} />
+        <span
+          css={mockBrowserDotStyle}
+          style={{ backgroundColor: "#ff5f57" }}
+        />
+        <span
+          css={mockBrowserDotStyle}
+          style={{ backgroundColor: "#febc2e" }}
+        />
+        <span
+          css={mockBrowserDotStyle}
+          style={{ backgroundColor: "#28c840" }}
+        />
       </div>
       <div css={mockBrowserContentStyle}>
         <span css={mockBrowserIconStyle}>{props.icon}</span>
@@ -157,19 +155,19 @@ function Widget(props: AllWidgetProps<any>) {
           <h2 css={titleStyle}>Guides and Tutorials</h2>
           <div css={dividerStyle} />
           <p css={subtitleStyle}>
-            New to the site? Here's a quick introduction to what you can do,
-            and a step-by-step guide to reviewing and commenting on a
-            Proposed LC Map.
+            New to the site? Here's a quick introduction to what you can do, and
+            a step-by-step guide to reviewing and commenting on a Proposed LC
+            Map.
           </p>
         </div>
 
         <section css={sectionStyle}>
           <h3 css={sectionTitleStyle}>Introduction to the Web App</h3>
           <p css={sectionIntroStyle}>
-            This site lets the public, LGUs, and partner agencies view
-            Proposed Land Classification Maps from NAMRIA's Forestland
-            Evaluation and Mapping Project, and submit feedback on them
-            before endorsement. Here's what you'll find around the site:
+            This site lets the public, LGUs, and partner agencies view Proposed
+            Land Classification Maps from NAMRIA's Forestland Evaluation and
+            Mapping Project, and submit feedback on them before endorsement.
+            Here's what you'll find around the site:
           </p>
 
           <div css={featureGridStyle}>
@@ -188,8 +186,8 @@ function Widget(props: AllWidgetProps<any>) {
             How to View and Comment on a Proposed LC Map
           </h3>
           <p css={sectionIntroStyle}>
-            Follow these steps to find a specific LC map for your area and
-            let the Land Classification Division know what you think.
+            Follow these steps to find a specific LC map for your area and let
+            the Land Classification Division know what you think.
           </p>
 
           <div css={stepListStyle}>

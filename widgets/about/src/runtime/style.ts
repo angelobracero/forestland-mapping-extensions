@@ -8,6 +8,7 @@ export const containerStyle = css({
   margin: '0 auto',
   padding: '56px 24px',
   boxSizing: 'border-box',
+  height: 'calc(100dvh - 90px)',
 })
 
 export const headerStyle = css({
@@ -63,34 +64,17 @@ export const videoCardStyle = css({
 export const videoThumbStyle = css({
   position: 'relative',
   aspectRatio: '16 / 9',
-  display: 'flex',
-  flexDirection: 'column',
+  display: 'grid',
+  gridTemplateRows: 'auto auto',
   alignItems: 'center',
   justifyContent: 'center',
   gap: '10px',
   background: 'linear-gradient(135deg, #0b5e2e 0%, #0d7a3a 100%)',
 })
 
-export const playButtonStyle = css({
-  width: '60px',
-  height: '60px',
-  borderRadius: '50%',
-  backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '1.4rem',
-  color: '#0b5e2e',
-  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-})
-
-export const videoPlaceholderLabelStyle = css({
-  fontSize: '0.78rem',
-  fontWeight: 600,
-  color: 'rgba(255, 255, 255, 0.85)',
-  backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  borderRadius: '999px',
-  padding: '3px 12px',
+export const videoStyle = css({
+  maxWidth: '100%',
+  height: 'auto',
 })
 
 export const videoInfoStyle = css({

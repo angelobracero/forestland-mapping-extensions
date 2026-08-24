@@ -25,26 +25,30 @@ import {
   quickLinkArrowStyle,
 } from "./style";
 
-// A resized/compressed copy of home-bg.png, used so the hero image
-// doesn't balloon the widget bundle (the original is ~5.8MB; this is
-// ~460KB at a size that still looks sharp as a hero background).
 const homeBg = require("./assets/home-bg-hero.jpg");
 
 const heroTitleText = (
   <>
-    Forestland Evaluation &amp; Mapping Project: Land Classification
-    Survey of Unclassified Public Forests
+    Forestland Evaluation &amp; Mapping Project: Land Classification Survey of
+    Unclassified Public Forests
   </>
 );
 
 const stats = [
-  { number: "798,000 ha", label: "Unclassified Public Forests remaining to be classified" },
-  { number: "DAO No. 31, s. 1988", label: "Legal basis for land classification, implementing E.O. 192" },
-  { number: "LCD - RDAB", label: "Land Classification Division, Resource Data Analysis Branch" },
+  {
+    number: "798,000 ha",
+    label: "Unclassified Public Forests remaining to be classified",
+  },
+  {
+    number: "DAO No. 31, s. 1988",
+    label: "Legal basis for land classification, implementing E.O. 192",
+  },
+  {
+    number: "LCD - RDAB",
+    label: "Land Classification Division, Resource Data Analysis Branch",
+  },
 ];
 
-// Pages are looked up by label, same as in forestland-menu, so these
-// links keep working even if a page's id changes in the builder.
 const quickLinks = [
   { icon: "\u{1F3DE}\u{FE0F}", label: "Gender and Development" },
   { icon: "\u{1F4F8}", label: "LCD in Action" },

@@ -33,10 +33,6 @@ export const heroContentStyle = css({
 })
 
 export const heroTitleStyle = css({
-  // Fluid size: scales with viewport width so the long title stays as
-  // close to one line as possible on wide screens, without needing a
-  // pile of fixed breakpoints. Explicit color (not inherited) because
-  // the builder's default h1 styling otherwise wins and renders black.
   fontSize: 'clamp(1.35rem, 1vw + 1.1rem, 2.3rem)',
   fontWeight: 800,
   lineHeight: 1.3,
@@ -56,7 +52,7 @@ export const heroTitleUnderlineStyle = css({
 })
 
 // ------------------------------------------------------------------
-// Page container (everything below the hero)
+// Page container 
 // ------------------------------------------------------------------
 
 export const containerStyle = css({

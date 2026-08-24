@@ -10,8 +10,7 @@ import {
   videoGridStyle,
   videoCardStyle,
   videoThumbStyle,
-  playButtonStyle,
-  videoPlaceholderLabelStyle,
+  videoStyle,
   videoInfoStyle,
   videoTitleStyle,
   videoDescStyle,
@@ -20,20 +19,23 @@ import {
 // TODO: replace these placeholder thumbnails with the real AVPs once
 // they're ready — either embed them with the built-in Embed widget, or
 // swap the placeholder <div> below for a real <iframe>/<video> element.
-const avps = [
-  {
-    title: "AVP for LC Survey",
-    description:
-      "A short audio-visual presentation on how NAMRIA conducts Land Classification (LC) surveys in the field, from technical mapping to boundary validation.",
-  },
-  {
-    title: "AVP for FEM Project",
-    description:
-      "An overview of the Forestland Evaluation and Mapping (FEM) Project — its mandate, process, and impact on land governance nationwide.",
-  },
-];
 
 function Widget(props: AllWidgetProps<any>) {
+  const avps = [
+    {
+      title: "Methodology on Land Classification of the Unclassified Land",
+      description:
+        "A short audio-visual presentation on how NAMRIA conducts Land Classification (LC) surveys in the field, from technical mapping to boundary validation.",
+      video: `${props.context.folderUrl}dist/runtime/assets/LCD_AVP.mp4`,
+    },
+    {
+      title: "Land CLassification Survey of the unclassified Public Forests",
+      description:
+        "An overview of the Forestland Evaluation and Mapping (FEM) Project — its mandate, process, and impact on land governance nationwide.",
+      video: `${props.context.folderUrl}dist/runtime/assets/LCD_NAMRIA.mp4`,
+    },
+  ];
+
   return (
     <Paper className="jimu-widget" component="main">
       <div css={containerStyle}>
@@ -50,10 +52,9 @@ function Widget(props: AllWidgetProps<any>) {
           {avps.map((avp) => (
             <div key={avp.title} css={videoCardStyle}>
               <div css={videoThumbStyle}>
-                <span css={playButtonStyle}>&#9658;</span>
-                <span css={videoPlaceholderLabelStyle}>
-                  Placeholder video
-                </span>
+                <video css={videoStyle} controls>
+                  <source src={avp.video} type="video/mp4" />
+                </video>
               </div>
               <div css={videoInfoStyle}>
                 <p css={videoTitleStyle}>{avp.title}</p>

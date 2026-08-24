@@ -1,10 +1,7 @@
 import { type AllWidgetProps } from "jimu-core";
 import { useEffect, useState } from "react";
 import { Paper, Select, Option } from "jimu-ui";
-
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import esriConfig from "@arcgis/core/config";
-
 import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis";
 
 import {
@@ -20,8 +17,6 @@ type LcMap = {
   lc_number: string;
   item_id: string;
 };
-
-esriConfig.portalUrl = "https://geospatial.namria.gov.ph/portal";
 
 const catalogLayer = new FeatureLayer({
   portalItem: {
