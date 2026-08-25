@@ -16,9 +16,7 @@ import {
   videoDescStyle,
 } from "./style";
 
-// TODO: replace these placeholder thumbnails with the real AVPs once
-// they're ready — either embed them with the built-in Embed widget, or
-// swap the placeholder <div> below for a real <iframe>/<video> element.
+const mediaDatabaseLink = "https://files.angelobracero.com/about-page";
 
 function Widget(props: AllWidgetProps<any>) {
   const avps = [
@@ -26,13 +24,13 @@ function Widget(props: AllWidgetProps<any>) {
       title: "Methodology on Land Classification of the Unclassified Land",
       description:
         "A short audio-visual presentation on how NAMRIA conducts Land Classification (LC) surveys in the field, from technical mapping to boundary validation.",
-      video: `${props.context.folderUrl}dist/runtime/assets/LCD_AVP.mp4`,
+      video: `${mediaDatabaseLink}/LCD_AVP.mp4`,
     },
     {
       title: "Land CLassification Survey of the unclassified Public Forests",
       description:
         "An overview of the Forestland Evaluation and Mapping (FEM) Project — its mandate, process, and impact on land governance nationwide.",
-      video: `${props.context.folderUrl}dist/runtime/assets/LCD_NAMRIA.mp4`,
+      video: `${mediaDatabaseLink}/LCD_NAMRIA.mp4`,
     },
   ];
 

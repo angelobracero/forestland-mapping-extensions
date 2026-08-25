@@ -33,6 +33,8 @@ type MediaItem = {
   media?: string;
 };
 
+const mediaDatabaseLink = "https://files.angelobracero.com/lcd-page";
+
 function Widget(props: AllWidgetProps<any>) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -41,49 +43,49 @@ function Widget(props: AllWidgetProps<any>) {
       type: "video",
       title: "LC Survey Fieldwork in Nueva Vizcaya",
       date: "August 15, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260815_130040.mp4`,
+      media: `${mediaDatabaseLink}/20260815_130040.mp4`,
     },
     {
       type: "video",
       title: "Boundary Validation Walkthrough",
       date: "August 15, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260815_130307.mp4`,
+      media: `${mediaDatabaseLink}/20260815_130307.mp4`,
     },
     {
       type: "image",
       title: "Technical Mapping Session",
       date: "August 17, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260817_102958.jpg`,
+      media: `${mediaDatabaseLink}/20260817_102958.jpg`,
     },
     {
       type: "video",
       title: "Community Consultation Meeting",
       date: "August 17, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260817_104540.mp4`,
+      media: `${mediaDatabaseLink}/20260817_104540.mp4`,
     },
     {
       type: "video",
       title: "LC Survey Team in the Field",
       date: "August 17, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260817_111149.mp4`,
+      media: `${mediaDatabaseLink}/20260817_111149.mp4`,
     },
     {
       type: "video",
       title: "Ground Truthing Activity",
       date: "August 20, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260820_104835.mp4`,
+      media: `${mediaDatabaseLink}/20260820_104835.mp4`,
     },
     {
       type: "video",
       title: "LCD Staff Conducting GPS Survey",
       date: "August 22, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/20260822_174359_073.mp4`,
+      media: `${mediaDatabaseLink}/20260822_174359_073.mp4`,
     },
     {
       type: "image",
       title: "Overview of the LC Mapping Process",
       date: "August 15, 2026",
-      media: `${props.context.folderUrl}dist/runtime/assets/DSC00927.jpg`,
+      media: `${mediaDatabaseLink}/DSC00927.jpg`,
     },
   ];
 

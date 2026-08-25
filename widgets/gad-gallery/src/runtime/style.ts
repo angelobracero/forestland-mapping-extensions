@@ -109,6 +109,7 @@ export const overlayStyle = css({
   alignItems: 'center',
   justifyContent: 'center',
   padding: '40px 24px',
+  paddingBlockStart: 'calc(40px + 90px)',
   boxSizing: 'border-box',
   zIndex: 10000,
   cursor: 'zoom-out',

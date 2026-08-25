@@ -86,8 +86,6 @@ export const imageStyle = css({
   transition: 'transform 0.3s ease',
 })
 
-// TODO: this is a placeholder in place of a real embedded video. Swap
-// for a real <iframe>/<video> element once the field videos are ready.
 export const videoThumbStyle = css({
   width: '100%',
   height: '100%',
@@ -110,15 +108,6 @@ export const playButtonStyle = css({
   fontSize: '1.2rem',
   color: '#0b5e2e',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-})
-
-export const videoPlaceholderLabelStyle = css({
-  fontSize: '0.72rem',
-  fontWeight: 600,
-  color: 'rgba(255, 255, 255, 0.85)',
-  backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  borderRadius: '999px',
-  padding: '2px 10px',
 })
 
 export const typeBadgeStyle = css({
@@ -160,6 +149,7 @@ export const overlayStyle = css({
   alignItems: 'center',
   justifyContent: 'center',
   padding: '40px 24px',
+  paddingBlockStart: 'calc(40px + 90px)',
   boxSizing: 'border-box',
   zIndex: 10000,
   cursor: 'zoom-out',

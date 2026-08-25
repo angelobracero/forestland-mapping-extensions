@@ -23,6 +23,8 @@ import {
   overlayCloseButtonStyle,
 } from "./style";
 
+const mediaDatabaseLink = "https://files.angelobracero.com/gad-page";
+
 function Widget(props: AllWidgetProps<any>) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -30,42 +32,42 @@ function Widget(props: AllWidgetProps<any>) {
     {
       title: "Gender Sensitivity Training for LCD Personnel",
       date: "August 24, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/1.jpg`,
+      image: `${mediaDatabaseLink}/1.jpg`,
     },
     {
       title: "Women in Geospatial Mapping Workshop",
       date: "August 24, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/2.jpg`,
+      image: `${mediaDatabaseLink}/2.jpg`,
     },
     {
       title: "GAD Orientation for New Employees",
       date: "August 24, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/3.png`,
+      image: `${mediaDatabaseLink}/3.png`,
     },
     {
       title: "International Women's Month Celebration",
       date: "June 17, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/4.jpg`,
+      image: `${mediaDatabaseLink}/4.jpg`,
     },
     {
       title: "Community Outreach and Education Program",
       date: "August 11, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/5.jpg`,
+      image: `${mediaDatabaseLink}/5.jpg`,
     },
     {
       title: "LCD GAD Planning Workshop",
       date: "August 12, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/6.jpg`,
+      image: `${mediaDatabaseLink}/6.jpg`,
     },
     {
       title: "LCD GAD Planning Workshop",
       date: "August 12, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/7.jpg`,
+      image: `${mediaDatabaseLink}/7.jpg`,
     },
     {
       title: "LCD GAD Planning Workshop",
       date: "August 12, 2026",
-      image: `${props.context.folderUrl}dist/runtime/assets/8.jpg`,
+      image: `${mediaDatabaseLink}/8.jpg`,
     },
   ];
 

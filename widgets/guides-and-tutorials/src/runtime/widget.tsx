@@ -207,8 +207,6 @@ function Widget(props: AllWidgetProps<any>) {
               );
 
               // Alternate which side the instruction text and the image
-              // land on: odd-numbered steps show text on the left, even
-              // steps show the image on the left.
               return (
                 <div key={step.title} css={stepRowStyle}>
                   {index % 2 === 0 ? (
