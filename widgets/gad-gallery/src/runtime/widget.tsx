@@ -25,10 +25,16 @@ import {
 
 const mediaDatabaseLink = "https://files.angelobracero.com/gad-page";
 
+type Activity = {
+  title?: string;
+  date: string;
+  image: string;
+};
+
 function Widget(props: AllWidgetProps<any>) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const baseActivities = [
+  const baseActivities: Activity[] = [
     {
       title: "Gender Sensitivity Training for LCD Personnel",
       date: "August 24, 2026",
@@ -106,7 +112,7 @@ function Widget(props: AllWidgetProps<any>) {
         <div css={gridStyle}>
           {baseActivities.map((activity, index) => (
             <div
-              key={`${activity.title}-${index}`}
+              key={`${activity.title ?? "activity"}-${index}`}
               css={cardStyle}
               onClick={() => setSelectedIndex(index)}
             >
@@ -114,11 +120,13 @@ function Widget(props: AllWidgetProps<any>) {
                 <img
                   css={imageStyle}
                   src={activity.image}
-                  alt={activity.title}
+                  alt={activity.title || "LCD GAD activity"}
                 />
               </div>
               <div css={captionStyle}>
-                <p css={captionTitleStyle}>{activity.title}</p>
+                {activity.title && (
+                  <p css={captionTitleStyle}>{activity.title}</p>
+                )}
                 <div css={captionDateStyle}>{activity.date}</div>
               </div>
             </div>
@@ -139,12 +147,14 @@ function Widget(props: AllWidgetProps<any>) {
           <img
             css={overlayImageStyle}
             src={selectedActivity.image}
-            alt={selectedActivity.title}
+            alt={selectedActivity.title || "LCD GAD activity"}
             onClick={(e) => e.stopPropagation()}
           />
 
           <div css={overlayCaptionStyle}>
-            <p css={overlayCaptionTitleStyle}>{selectedActivity.title}</p>
+            {selectedActivity.title && (
+              <p css={overlayCaptionTitleStyle}>{selectedActivity.title}</p>
+            )}
             <div css={overlayCaptionDateStyle}>{selectedActivity.date}</div>
           </div>
         </div>

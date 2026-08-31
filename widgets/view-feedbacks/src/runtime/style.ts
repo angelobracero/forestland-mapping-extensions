@@ -1,5 +1,10 @@
 import { css } from "jimu-core";
 
+export const pageStyle = css({
+  minHeight: 'calc(100dvh - 90px)',
+  boxSizing: 'border-box',
+})
+
 export const containerStyle = css({
   display: 'flex',
   flexDirection: 'column',
@@ -69,6 +74,81 @@ export const filterLabelStyle = css({
   fontSize: '0.8rem',
   fontWeight: 600,
   color: '#555',
+})
+
+export const filtersToggleStyle = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  alignSelf: 'flex-end',
+  background: '#fff',
+  border: '1px solid #ddd',
+  borderRadius: '8px',
+  padding: '9px 16px',
+  fontSize: '0.85rem',
+  fontWeight: 600,
+  color: '#0b5e2e',
+  cursor: 'pointer',
+  transition: 'border-color 0.15s ease',
+
+  '&:hover': {
+    borderColor: '#0b5e2e',
+  },
+})
+
+export const filtersToggleCountStyle = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '18px',
+  height: '18px',
+  padding: '0 5px',
+  borderRadius: '999px',
+  backgroundColor: '#0b5e2e',
+  color: '#fff',
+  fontSize: '0.72rem',
+  fontWeight: 700,
+})
+
+export const chipFiltersStyle = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '16px',
+  marginTop: '20px',
+})
+
+export const chipGroupStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px',
+})
+
+export const chipStyle = css({
+  background: '#fff',
+  border: '1px solid #ddd',
+  borderRadius: '999px',
+  padding: '6px 14px',
+  fontSize: '0.85rem',
+  fontWeight: 500,
+  color: '#444',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+
+  '&:hover': {
+    borderColor: '#0b5e2e',
+    color: '#0b5e2e',
+  },
+})
+
+export const chipActiveStyle = css({
+  background: '#0b5e2e',
+  borderColor: '#0b5e2e',
+  color: '#fff',
+
+  '&:hover': {
+    borderColor: '#0b5e2e',
+    color: '#fff',
+  },
 })
 
 export const filterFooterStyle = css({
@@ -156,26 +236,90 @@ export const commentListStyle = css({
 })
 
 export const commentItemStyle = css({
-  padding: '16px 20px',
+  display: 'flex',
+  gap: '14px',
+  padding: '18px 20px',
+  alignItems: 'flex-start',
 
   '&:not(:last-of-type)': {
     borderBottom: '1px solid #f0f0f0',
   },
 })
 
-export const commentTextStyle = css({
-  fontSize: '0.95rem',
-  color: '#222',
-  lineHeight: 1.6,
-  margin: 0,
+export const commentAvatarStyle = css({
+  flexShrink: 0,
+  width: '40px',
+  height: '40px',
+  borderRadius: '50%',
+  background: 'linear-gradient(135deg, #0b5e2e 0%, #0d7a3a 100%)',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '0.9rem',
+  fontWeight: 700,
+  textTransform: 'uppercase',
 })
 
-export const commentMetaStyle = css({
+export const commentBodyStyle = css({
+  flex: 1,
+  minWidth: 0,
+})
+
+export const commentHeaderRowStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'baseline',
+  justifyContent: 'space-between',
+  gap: '8px 12px',
+})
+
+export const commentAuthorNameStyle = css({
+  fontSize: '0.92rem',
+  fontWeight: 600,
+  color: '#1a1a1a',
+})
+
+export const commentDateStyle = css({
+  fontSize: '0.78rem',
+  color: '#999',
+  whiteSpace: 'nowrap',
+})
+
+export const commentHeaderRightStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+})
+
+export const deleteButtonStyle = css({
+  background: 'none',
+  border: 'none',
+  padding: '2px 4px',
+  fontSize: '0.85rem',
+  lineHeight: 1,
+  color: '#999',
+  cursor: 'pointer',
+  borderRadius: '4px',
+  transition: 'color 0.15s ease, background-color 0.15s ease',
+
+  '&:hover': {
+    color: '#c0392b',
+    backgroundColor: '#fdecea',
+  },
+
+  '&:disabled': {
+    cursor: 'default',
+    opacity: 0.6,
+  },
+})
+
+export const commentSubMetaStyle = css({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
   gap: '6px',
-  marginTop: '10px',
+  marginTop: '2px',
   fontSize: '0.8rem',
   color: '#888',
 })
@@ -184,7 +328,21 @@ export const commentMetaDotStyle = css({
   color: '#ccc',
 })
 
-export const attachmentBadgeStyle = css({
+export const commentTextStyle = css({
+  fontSize: '0.95rem',
+  color: '#222',
+  lineHeight: 1.6,
+  margin: '8px 0 0',
+})
+
+export const attachmentListStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px',
+  marginTop: '10px',
+})
+
+export const attachmentLinkStyle = css({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '4px',
@@ -193,6 +351,11 @@ export const attachmentBadgeStyle = css({
   backgroundColor: '#e6f3ea',
   borderRadius: '999px',
   padding: '2px 8px',
+  textDecoration: 'none',
+
+  '&:hover': {
+    textDecoration: 'underline',
+  },
 })
 
 export const emptyStateStyle = css({

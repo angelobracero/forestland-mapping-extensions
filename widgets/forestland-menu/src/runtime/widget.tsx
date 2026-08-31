@@ -1,5 +1,5 @@
 import { type AllWidgetProps, UrlManager, getAppStore } from "jimu-core";
-import { Paper, Nav, NavItem, NavLink } from "jimu-ui";
+import { Paper } from "jimu-ui";
 
 import { headerStyle, navStyle, navItemStyle, navLinkStyle } from "./style";
 
@@ -33,15 +33,19 @@ function Widget(props: AllWidgetProps<any>) {
 
   return (
     <Paper css={headerStyle} className="jimu-widget" component="header">
-      <Nav css={navStyle}>
+      <ul css={navStyle}>
         {navLinks.map((label) => (
-          <NavItem key={label} css={navItemStyle}>
-            <NavLink css={navLinkStyle} onClick={() => goToPage(label)}>
+          <li key={label} css={navItemStyle}>
+            <button
+              type="button"
+              css={navLinkStyle}
+              onClick={() => goToPage(label)}
+            >
               {label}
-            </NavLink>
-          </NavItem>
+            </button>
+          </li>
         ))}
-      </Nav>
+      </ul>
     </Paper>
   );
 }

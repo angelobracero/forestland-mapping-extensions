@@ -70,7 +70,14 @@ const features = [
   },
 ];
 
-const steps = [
+type Step = {
+  icon: string;
+  caption: string;
+  title: string;
+  description: string;
+};
+
+const steps: Step[] = [
   {
     icon: "\u{1F5FA}\u{FE0F}",
     caption: "Proposed LC Maps page",
@@ -80,24 +87,10 @@ const steps = [
   },
   {
     icon: "\u{1F4CD}",
-    caption: "Region ▾",
-    title: "Select a Region",
+    caption: "Region ▾ → Province ▾ → LC Map Number ▾",
+    title: "Select a Region, Province, and LC Map Number",
     description:
-      "Use the Region dropdown to choose your region. This narrows down the list of provinces to only the ones in that region.",
-  },
-  {
-    icon: "\u{1F3DE}\u{FE0F}",
-    caption: "Province ▾",
-    title: "Select a Province",
-    description:
-      "Pick your province from the updated list. The available LC Map Numbers will update automatically based on your choice.",
-  },
-  {
-    icon: "\u{1F522}",
-    caption: "LC Map Number ▾ → map loads",
-    title: "Select an LC Map Number",
-    description:
-      "Choose the specific LC map you want to review. It loads onto the map and the view zooms to that map's extent automatically.",
+      "Use the three dropdowns to narrow down to the exact LC map you want to review: pick a Region first, then a Province, then the LC Map Number. Each choice updates the options below it, and picking the LC Map Number loads that map onto the view and zooms to its extent automatically.",
   },
   {
     icon: "\u{1F4AC}",
@@ -108,10 +101,10 @@ const steps = [
   },
   {
     icon: "\u{270F}\u{FE0F}",
-    caption: "Office · Comment · Attach Photos",
+    caption: "Office · Email · Comment",
     title: "Add Your Comment",
     description:
-      "Click on the area you want to comment on, then fill in your Office and Comment. You can optionally attach supporting photos or files.",
+      "Click on the area you want to comment on, then fill in your Office, Email, and Comment. Your name and the region/province/LC map number are filled in for you automatically, based on your account and the map you selected.",
   },
   {
     icon: "\u{2705}",
@@ -119,6 +112,51 @@ const steps = [
     title: "Submit and Track It",
     description:
       "Once submitted, your comment is saved and will appear in the View Feedbacks page, grouped and searchable by province.",
+  },
+];
+
+const viewFeedbackSteps: Step[] = [
+  {
+    icon: "\u{1F4CB}",
+    caption: "View Feedbacks page",
+    title: "Go to “View Feedbacks”",
+    description:
+      "Open the View Feedbacks page from the main menu to see every comment submitted on the Proposed LC Maps, grouped by province.",
+  },
+  {
+    icon: "\u{1F50D}",
+    caption: "Search + Region / Province / LC Map filters",
+    title: "Narrow It Down",
+    description:
+      "Type into Search to match comment text, editor, or office, or click the Region, Province, and LC Map Number filter pills to zero in on exactly what you're looking for. You can select more than one of each.",
+  },
+  {
+    icon: "\u{1F4C2}",
+    caption: "Province card expands",
+    title: "Open a Province",
+    description:
+      "Click any province card to expand it and reveal every comment submitted for that province.",
+  },
+  {
+    icon: "\u{1F4AC}",
+    caption: "Editor · Office · LC Map · Date",
+    title: "Read a Comment",
+    description:
+      "Each comment shows who submitted it, their office, which LC map it's about, and when, along with the full comment text.",
+  },
+  {
+    icon: "\u{1F4CE}",
+    caption: "Photos And Files",
+    title: "Check Attachments",
+    description:
+      "If a comment has supporting photos or files attached, they appear as clickable links right below it.",
+  },
+  {
+    icon: "\u{2195}\u{FE0F}",
+    caption: "Sort by date: Newest ▾",
+    title: "Sort by Date",
+    description:
+      "Use the Sort by date control to see the newest submissions first, or flip it to see the oldest ones.",
   },
 ];
 
@@ -147,6 +185,43 @@ function MockBrowser(props: { icon: string; caption: string }) {
   );
 }
 
+function StepWalkthrough(props: { steps: Step[] }) {
+  return (
+    <div css={stepListStyle}>
+      {props.steps.map((step, index) => {
+        const media = <MockBrowser icon={step.icon} caption={step.caption} />;
+
+        const content = (
+          <div css={stepContentStyle}>
+            <div css={stepHeaderStyle}>
+              <span css={stepNumberBadgeStyle}>{index + 1}</span>
+              <p css={stepTitleStyle}>{step.title}</p>
+            </div>
+            <p css={stepDescStyle}>{step.description}</p>
+          </div>
+        );
+
+        // Alternate which side the instruction text and the image sit on.
+        return (
+          <div key={step.title} css={stepRowStyle}>
+            {index % 2 === 0 ? (
+              <>
+                {content}
+                {media}
+              </>
+            ) : (
+              <>
+                {media}
+                {content}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Widget(props: AllWidgetProps<any>) {
   return (
     <Paper className="jimu-widget" component="main">
@@ -155,9 +230,9 @@ function Widget(props: AllWidgetProps<any>) {
           <h2 css={titleStyle}>Guides and Tutorials</h2>
           <div css={dividerStyle} />
           <p css={subtitleStyle}>
-            New to the site? Here's a quick introduction to what you can do, and
-            a step-by-step guide to reviewing and commenting on a Proposed LC
-            Map.
+            New to the site? Here's a quick introduction to what you can do,
+            plus step-by-step guides to commenting on a Proposed LC Map and
+            browsing everyone else's feedback.
           </p>
         </div>
 
@@ -190,46 +265,35 @@ function Widget(props: AllWidgetProps<any>) {
             the Land Classification Division know what you think.
           </p>
 
-          <div css={stepListStyle}>
-            {steps.map((step, index) => {
-              const media = (
-                <MockBrowser icon={step.icon} caption={step.caption} />
-              );
-
-              const content = (
-                <div css={stepContentStyle}>
-                  <div css={stepHeaderStyle}>
-                    <span css={stepNumberBadgeStyle}>{index + 1}</span>
-                    <p css={stepTitleStyle}>{step.title}</p>
-                  </div>
-                  <p css={stepDescStyle}>{step.description}</p>
-                </div>
-              );
-
-              // Alternate which side the instruction text and the image
-              return (
-                <div key={step.title} css={stepRowStyle}>
-                  {index % 2 === 0 ? (
-                    <>
-                      {content}
-                      {media}
-                    </>
-                  ) : (
-                    <>
-                      {media}
-                      {content}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <StepWalkthrough steps={steps} />
 
           <div css={noteBoxStyle}>
             <span>{"\u{1F4A1}"}</span>
             <span>
               Tip: You can always check the status of your comment, and read
               what others have submitted, from the View Feedbacks page.
+            </span>
+          </div>
+        </section>
+
+        <section css={sectionStyle}>
+          <h3 css={sectionTitleStyle}>
+            How to View Comments on Proposed LC Maps
+          </h3>
+          <p css={sectionIntroStyle}>
+            Already submitted feedback, or just want to see what others have
+            said? Here's how to browse and filter every comment on the View
+            Feedbacks page.
+          </p>
+
+          <StepWalkthrough steps={viewFeedbackSteps} />
+
+          <div css={noteBoxStyle}>
+            <span>{"\u{1F4A1}"}</span>
+            <span>
+              Tip: Filters combine, so you can pick a region, then a
+              province, then narrow to one specific LC map number, all at
+              once.
             </span>
           </div>
         </section>

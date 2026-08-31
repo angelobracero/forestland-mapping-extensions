@@ -19,6 +19,8 @@ export const navStyle = css({
   gap: '2px',
   overflowX: 'auto',
   scrollbarWidth: 'none',
+  margin: 0,
+  padding: 0,
 })
 
 export const navItemStyle = css({
@@ -26,6 +28,9 @@ export const navItemStyle = css({
 })
 
 export const navLinkStyle = css({
+  background: 'none',
+  border: 'none',
+  font: 'inherit',
   display: 'inline-block',
   padding: '8px 14px',
   borderRadius: '6px',

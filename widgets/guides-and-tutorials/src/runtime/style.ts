@@ -83,6 +83,12 @@ export const featureCardStyle = css({
   display: 'flex',
   flexDirection: 'column',
   gap: '8px',
+  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+
+  '&:hover': {
+    transform: 'translateY(-3px)',
+    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12)',
+  },
 })
 
 export const featureIconStyle = css({
@@ -110,7 +116,7 @@ export const featureDescStyle = css({
 export const stepListStyle = css({
   display: 'flex',
   flexDirection: 'column',
-  gap: '28px',
+  gap: '48px',
 })
 
 // Two even columns that swap sides per step (handled by swapping the
@@ -132,6 +138,15 @@ export const mockBrowserStyle = css({
   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
   backgroundColor: '#fff',
   border: '1px solid #e6e6e6',
+
+  // Once stepRowStyle wraps to a single column, force the illustration
+  // above the text on every step -- without this, alternating which
+  // element comes first in the DOM (for the desktop side-swap) makes
+  // the image land above the text on some steps and below on others
+  // once stacked.
+  '@media (max-width: 720px)': {
+    order: 1,
+  },
 })
 
 export const mockBrowserChromeStyle = css({
@@ -178,6 +193,10 @@ export const stepContentStyle = css({
   display: 'flex',
   flexDirection: 'column',
   gap: '8px',
+
+  '@media (max-width: 720px)': {
+    order: 2,
+  },
 })
 
 export const stepHeaderStyle = css({

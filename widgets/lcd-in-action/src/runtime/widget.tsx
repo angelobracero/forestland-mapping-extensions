@@ -28,7 +28,7 @@ import {
 
 type MediaItem = {
   type: "image" | "video";
-  title: string;
+  title?: string;
   date: string;
   media?: string;
 };
@@ -126,7 +126,7 @@ function Widget(props: AllWidgetProps<any>) {
 
             return (
               <div
-                key={`${item.title}-${index}`}
+                key={`${item.title ?? "media"}-${index}`}
                 css={[cardStyle, isPhoto && clickableCardStyle]}
                 onClick={isPhoto ? () => setSelectedIndex(index) : undefined}
               >
@@ -136,7 +136,11 @@ function Widget(props: AllWidgetProps<any>) {
                   </span>
 
                   {isPhoto ? (
-                    <img css={imageStyle} src={item.media} alt={item.title} />
+                    <img
+                      css={imageStyle}
+                      src={item.media}
+                      alt={item.title || "LCD in Action photo"}
+                    />
                   ) : (
                     <div css={videoThumbStyle}>
                       <video controls>
@@ -146,7 +150,9 @@ function Widget(props: AllWidgetProps<any>) {
                   )}
                 </div>
                 <div css={captionStyle}>
-                  <p css={captionTitleStyle}>{item.title}</p>
+                  {item.title && (
+                    <p css={captionTitleStyle}>{item.title}</p>
+                  )}
                   <div css={captionDateStyle}>{item.date}</div>
                 </div>
               </div>
@@ -168,12 +174,14 @@ function Widget(props: AllWidgetProps<any>) {
           <img
             css={overlayImageStyle}
             src={selectedItem.media}
-            alt={selectedItem.title}
+            alt={selectedItem.title || "LCD in Action photo"}
             onClick={(e) => e.stopPropagation()}
           />
 
           <div css={overlayCaptionStyle}>
-            <p css={overlayCaptionTitleStyle}>{selectedItem.title}</p>
+            {selectedItem.title && (
+              <p css={overlayCaptionTitleStyle}>{selectedItem.title}</p>
+            )}
             <div css={overlayCaptionDateStyle}>{selectedItem.date}</div>
           </div>
         </div>

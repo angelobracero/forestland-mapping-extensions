@@ -1,14 +1,16 @@
-import { type AllWidgetProps } from "jimu-core";
+import { type AllWidgetProps, getAppStore } from "jimu-core";
 import { useEffect, useState } from "react";
-import { Paper, Select, Option } from "jimu-ui";
+import { Paper, Select, Option, enqueueNotification } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import FormTemplate from "@arcgis/core/form/FormTemplate";
 import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis";
 
 import {
-  filterContainerStyle,
-  regionFilterStyle,
-  provinceFilterStyle,
+  filterPanelStyle,
   titleStyle,
+  filterContainerStyle,
+  fieldStyle,
+  fieldLabelStyle,
 } from "./style";
 
 type LcMap = {
@@ -24,11 +26,42 @@ const catalogLayer = new FeatureLayer({
   },
 });
 
-const commentLayer = new FeatureLayer({
-  portalItem: {
-    id: "f534c711fbdb4837a74ee79de867ffa4",
-  },
-});
+const COMMENT_LAYER_PORTAL_ITEM_ID = "f534c711fbdb4837a74ee79de867ffa4";
+
+// NOTE: these must exactly match the field names (including case) on the
+// comment feature layer in AGOL. Update these constants if you name the
+// fields differently there.
+const REGION_FIELD = "region";
+const PROVINCE_FIELD = "province";
+const LC_NUMBER_FIELD = "lc_number";
+
+const DRAWING_TOOL_BY_GEOMETRY_TYPE: Record<string, string> = {
+  point: "esriFeatureEditToolPoint",
+  multipoint: "esriFeatureEditToolMultiPoint",
+  polyline: "esriFeatureEditToolLine",
+  polygon: "esriFeatureEditToolPolygon",
+};
+
+// The "Editor" field's exact casing on the comment layer isn't confirmed
+// (unlike region/province/lc_number), so look it up case- and
+// punctuation-insensitively instead of guessing.
+function resolveFieldName(
+  layer: FeatureLayer,
+  ...candidates: string[]
+): string | undefined {
+  const normalize = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalizedCandidates = candidates.map(normalize);
+
+  return layer.fields?.find((field) =>
+    normalizedCandidates.includes(normalize(field.name)),
+  )?.name;
+}
+
+function getCurrentUserDisplayName(): string | null {
+  const user = getAppStore().getState().portalSelf?.user;
+
+  return user?.fullName || user?.username || null;
+}
 
 function Widget(props: AllWidgetProps<any>) {
   const [lcMaps, setLcMaps] = useState<LcMap[]>([]);
@@ -39,6 +72,7 @@ function Widget(props: AllWidgetProps<any>) {
   const [currentLcLayer, setCurrentLcLayer] = useState<FeatureLayer | null>(
     null,
   );
+  const [commentLayer, setCommentLayer] = useState<FeatureLayer | null>(null);
 
   // LOAD LC MAPS
   useEffect(() => {
@@ -278,10 +312,22 @@ function Widget(props: AllWidgetProps<any>) {
       }
 
       // Create LC Map layer
+      // outFields must be set explicitly -- without it, FeatureLayer only
+      // fetches the fields needed for rendering, so a popup can show its
+      // template but no actual attribute values (a blank-looking popup).
+      // editingEnabled: false is the reference layer this widget draws
+      // from -- it's not meant to be user-editable, unlike the comment
+      // layer. This is the same property the built-in Editor widget
+      // itself checks to decide whether a layer can be edited at all
+      // (use-feature-form.ts: `layer.editingEnabled ?? true`), so it
+      // reliably blocks adding/editing/deleting features on this layer
+      // regardless of which widget touches it.
       const lcLayer = new FeatureLayer({
         portalItem: {
           id: selectedMap.item_id,
         },
+        outFields: ["*"],
+        editingEnabled: false,
       });
 
       // Load map
@@ -303,39 +349,203 @@ function Widget(props: AllWidgetProps<any>) {
         console.log("Zoomed to LC Map.");
       }
 
-      // Load comment layer
-      await commentLayer.load();
-      console.log("Comment layer loaded:", commentLayer.title);
+      // ------------------------------------------------------
+      // Comment layer: rebuild it from scratch with a fresh
+      // FeatureLayer instance every time the LC map changes.
+      //
+      // The built-in Editor widget caches its "active layer" reference
+      // and only re-reads layer.templates (used to prefill new comment
+      // features) when that reference actually changes -- mutating
+      // .templates on a persistent layer instance is not enough to make
+      // it notice. Swapping in a brand-new instance forces it to pick
+      // up the current region/province/lc_number defaults.
+      // ------------------------------------------------------
 
-      // Filter Comments
-      // const escapedLcNumber = lc_number.replace(/'/g, "''");
-      // commentLayer.definitionExpression = `lc_number = '${escapedLcNumber}'`;
+      if (commentLayer) {
+        console.log("Removing previous comment layer:", commentLayer.title);
 
-      // console.log(
-      //   "Comment definition expression:",
-      //   commentLayer.definitionExpression,
-      // );
+        map.remove(commentLayer);
 
-      // Add comment layer
-      if (!map.layers.includes(commentLayer)) {
-        map.add(commentLayer);
-
-        console.log("Comment layer added.");
-      } else {
-        console.log("Comment layer already exists.");
+        setCommentLayer(null);
       }
 
+      const newCommentLayer = new FeatureLayer({
+        portalItem: {
+          id: COMMENT_LAYER_PORTAL_ITEM_ID,
+        },
+        outFields: ["*"],
+      });
+
+      // Notify the user when a comment is actually saved, regardless of
+      // which widget (e.g. the built-in Editor widget) performed the save.
+      // NOTE: the ArcGIS JS API's "edits" event only fires for SUCCESSFUL
+      // applyEdits() calls -- failed edits are not included in this event
+      // at all, so there is no equivalent native signal here for a
+      // "comment failed to save" toast. The Editor widget's own form
+      // already surfaces validation/save errors in its UI.
+      newCommentLayer.on("edits", (event) => {
+        if (event.addedFeatures?.length > 0) {
+          enqueueNotification({
+            message: "Comment added successfully.",
+            severity: "success",
+            placement: "bottom-left",
+          });
+        }
+
+        if (event.updatedFeatures?.length > 0) {
+          enqueueNotification({
+            message: "Comment updated successfully.",
+            severity: "success",
+            placement: "bottom-left",
+          });
+        }
+
+        if (event.deletedFeatures?.length > 0) {
+          enqueueNotification({
+            message: "Comment deleted.",
+            severity: "info",
+            placement: "bottom-left",
+          });
+        }
+      });
+
+      await newCommentLayer.load();
+      console.log("Comment layer loaded:", newCommentLayer.title);
+
+      const missingFields = [
+        REGION_FIELD,
+        PROVINCE_FIELD,
+        LC_NUMBER_FIELD,
+      ].filter(
+        (name) =>
+          !newCommentLayer.fields?.some((field) => field.name === name),
+      );
+
+      if (missingFields.length > 0) {
+        console.warn(
+          "Comment layer is missing field(s) needed for filter defaults:",
+          missingFields,
+        );
+      } else {
+        const defaultAttributes: Record<string, any> = {
+          [REGION_FIELD]: selectedRegion || null,
+          [PROVINCE_FIELD]: selectedProvince || null,
+          [LC_NUMBER_FIELD]: lc_number || null,
+        };
+
+        const editorFieldName = resolveFieldName(newCommentLayer, "editor");
+
+        if (editorFieldName) {
+          defaultAttributes[editorFieldName] = getCurrentUserDisplayName();
+        } else {
+          console.warn(
+            "Comment layer has no recognizable 'editor' field; skipping auto-populated editor default.",
+          );
+        }
+
+        newCommentLayer.templates = [
+          {
+            name: newCommentLayer.title || "Comment",
+            description: "",
+            drawingTool:
+              DRAWING_TOOL_BY_GEOMETRY_TYPE[newCommentLayer.geometryType] ??
+              "esriFeatureEditToolPoint",
+            prototype: { attributes: defaultAttributes },
+          },
+        ];
+
+        console.log(
+          "Comment layer default attributes set:",
+          defaultAttributes,
+        );
+
+        // Only show comments that belong to the currently selected LC map.
+        const escapeValue = (value: string) => value.replace(/'/g, "''");
+
+        newCommentLayer.definitionExpression = `${REGION_FIELD} = '${escapeValue(selectedRegion)}' AND ${PROVINCE_FIELD} = '${escapeValue(selectedProvince)}' AND ${LC_NUMBER_FIELD} = '${escapeValue(lc_number)}'`;
+
+        console.log(
+          "Comment layer definition expression:",
+          newCommentLayer.definitionExpression,
+        );
+      }
+
+      // ------------------------------------------------------
+      // Editor widget form: keep every EDITABLE field present (nothing
+      // required excluded -- that's what fixed "Database error has
+      // occurred", caused by omitting a required field), but mark
+      // Editor/Region/Province/LC Map Number as read-only so people can
+      // see the auto-populated values without being able to change them.
+      //
+      // Fields the service itself marks non-editable (ObjectID,
+      // GlobalID, Shape_Area, Shape_Length, and any other
+      // system/calculated field) are excluded via field.editable rather
+      // than guessing specific field names or types -- they can't be
+      // submitted by a client edit anyway, so leaving them out doesn't
+      // risk the same "missing required field" failure.
+      // ------------------------------------------------------
+
+      const READ_ONLY_EXPRESSION_NAME = "auto-populated-not-editable";
+
+      const readOnlyFieldNames = new Set(
+        ["editor", REGION_FIELD, PROVINCE_FIELD, LC_NUMBER_FIELD]
+          .map((candidate) => resolveFieldName(newCommentLayer, candidate))
+          .filter((name): name is string => Boolean(name)),
+      );
+
+      const formFields = (newCommentLayer.fields ?? []).filter(
+        (field) => field.editable !== false,
+      );
+
+      newCommentLayer.formTemplate = new FormTemplate({
+        title: newCommentLayer.title || "Comment",
+        expressionInfos: [
+          {
+            name: READ_ONLY_EXPRESSION_NAME,
+            expression: "false",
+            returnType: "boolean",
+          },
+        ],
+        elements: formFields.map((field) => ({
+          type: "field",
+          fieldName: field.name,
+          label: field.alias || field.name,
+          ...(readOnlyFieldNames.has(field.name)
+            ? { editableExpression: READ_ONLY_EXPRESSION_NAME }
+            : {}),
+        })),
+      });
+
+      // ------------------------------------------------------
+      // Popup (click-to-inspect on the map) is a separate concern from
+      // the Editor widget's add/edit form above. Without an explicit
+      // popupTemplate, ArcGIS appears to reuse formTemplate to build the
+      // default popup -- but form-only properties like
+      // editableExpression aren't meaningful in a popup, which was
+      // making the popup render completely blank. Generating a
+      // dedicated popup template from all of the layer's fields keeps
+      // clicking a comment on the map showing full details, regardless
+      // of what the edit form restricts.
+      // ------------------------------------------------------
+
+      newCommentLayer.popupTemplate = newCommentLayer.createPopupTemplate();
+
+      // Add comment layer
+      map.add(newCommentLayer);
+      setCommentLayer(newCommentLayer);
+      console.log("Comment layer added.");
+
       // Make sure comments are visible
-      commentLayer.visible = true;
+      newCommentLayer.visible = true;
 
       // Register Comment Layer with Experience Builder
-      await ensureLayerDataSource(commentLayer);
+      await ensureLayerDataSource(newCommentLayer);
 
       // 11. Keep comments above LC Map in the layer list
-      const commentIndex = map.layers.indexOf(commentLayer);
+      const commentIndex = map.layers.indexOf(newCommentLayer);
 
       if (commentIndex !== -1) {
-        map.reorder(commentLayer, map.layers.length - 1);
+        map.reorder(newCommentLayer, map.layers.length - 1);
       }
 
       // Check
@@ -344,7 +554,7 @@ function Widget(props: AllWidgetProps<any>) {
       console.log("LC NUMBER LOAD COMPLETE");
       console.log("LC Number:", lc_number);
       console.log("LC Map:", lcLayer.title);
-      console.log("Comments:", commentLayer.title);
+      console.log("Comments:", newCommentLayer.title);
       console.log("================================");
       console.log("");
     } catch (error) {
@@ -381,7 +591,7 @@ function Widget(props: AllWidgetProps<any>) {
           FILTER
           ===================================================== */}
 
-      <Paper className="jimu-widget" component="div">
+      <Paper css={filterPanelStyle} className="jimu-widget" component="div">
         <div css={titleStyle}>Filter</div>
 
         <div css={filterContainerStyle}>
@@ -389,8 +599,8 @@ function Widget(props: AllWidgetProps<any>) {
               REGION
               ================================================= */}
 
-          <div css={regionFilterStyle}>
-            <label>Region</label>
+          <div css={fieldStyle}>
+            <label css={fieldLabelStyle}>Region</label>
 
             <Select
               value={selectedRegion}
@@ -411,8 +621,8 @@ function Widget(props: AllWidgetProps<any>) {
               PROVINCE
               ================================================= */}
 
-          <div css={provinceFilterStyle}>
-            <label>Province</label>
+          <div css={fieldStyle}>
+            <label css={fieldLabelStyle}>Province</label>
 
             <Select
               value={selectedProvince}
@@ -434,8 +644,8 @@ function Widget(props: AllWidgetProps<any>) {
               LC MAP NUMBER
               ================================================= */}
 
-          <div css={provinceFilterStyle}>
-            <label>Lc Map Number</label>
+          <div css={fieldStyle}>
+            <label css={fieldLabelStyle}>LC Map Number</label>
 
             <Select
               value={selectedLcNumber}
@@ -443,7 +653,7 @@ function Widget(props: AllWidgetProps<any>) {
               onChange={(e) => {
                 handleLcNumberChange(e.target.value);
               }}
-              placeholder="Select a Lc Map Number"
+              placeholder="Select a LC Map Number"
             >
               {lcMapNumbers.map((number) => (
                 <Option key={number} value={number}>
