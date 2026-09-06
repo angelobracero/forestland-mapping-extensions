@@ -1,0 +1,23 @@
+{
+  "name": "shapefile-preview",
+  "label": "Shapefile Preview",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "A widget that lets a visitor preview their own zipped shapefile on the map, entirely in their own browser -- nothing is uploaded, published, or saved to this organization.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {},
+  "useMapWidgetIds": true,
+  "translatedLocales": [
+    "en"
+  ],
+  "dependency": [
+    "jimu-arcgis"
+  ],
+  "defaultSize": {
+    "width": 300,
+    "height": 100
+  }
+}

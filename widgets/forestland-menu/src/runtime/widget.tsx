@@ -1,23 +1,63 @@
 import { type AllWidgetProps, UrlManager, getAppStore } from "jimu-core";
+import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
+import { checkIsContentAdmin } from "widgets/shared-code/admin-auth";
 
-import { headerStyle, navStyle, navItemStyle, navLinkStyle } from "./style";
+import {
+  sidebarStyle,
+  logoContainerStyle,
+  logoImageStyle,
+  navStyle,
+  navItemStyle,
+  navLinkStyle,
+} from "./style";
+
+const namriaLogo = require("./assets/namria-logo.png");
 
 // Pages are looked up by their label (the page name shown in the builder)
 // instead of a hardcoded page id, so renaming a page or regenerating its id
 // in the builder doesn't break this nav. Keep these in sync with the page
 // labels used in the app.
-const navLinks = [
-  "Home",
-  "About",
-  "Gender and Development",
-  "LCD in Action",
-  "Guides and Tutorials",
-  "Proposed LC Maps",
-  "View Feedbacks",
+type NavLink = {
+  label: string;
+  adminOnly?: boolean;
+};
+
+const navLinks: NavLink[] = [
+  { label: "Home" },
+  { label: "About" },
+  { label: "Gender and Development" },
+  { label: "LCD in Action" },
+  { label: "Guides and Tutorials" },
+  { label: "Proposed LC Maps" },
+  { label: "View Feedbacks" },
+  { label: "Content Admin", adminOnly: true },
 ];
 
 function Widget(props: AllWidgetProps<any>) {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkAuth = async () => {
+      const currentUsername = getAppStore().getState().portalSelf?.user?.username;
+      const result = await checkIsContentAdmin(currentUsername);
+
+      if (!cancelled) {
+        setIsAdmin(result);
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleNavLinks = navLinks.filter((link) => !link.adminOnly || isAdmin);
+
   const goToPage = (pageLabel: string) => {
     const { pages } = getAppStore().getState().appConfig;
     const page = Object.values(pages).find((p) => p.label === pageLabel);
@@ -32,9 +72,13 @@ function Widget(props: AllWidgetProps<any>) {
   };
 
   return (
-    <Paper css={headerStyle} className="jimu-widget" component="header">
+    <Paper css={sidebarStyle} className="jimu-widget" component="nav">
+      <div css={logoContainerStyle}>
+        <img css={logoImageStyle} src={namriaLogo} alt="NAMRIA logo" />
+      </div>
+
       <ul css={navStyle}>
-        {navLinks.map((label) => (
+        {visibleNavLinks.map(({ label }) => (
           <li key={label} css={navItemStyle}>
             <button
               type="button"

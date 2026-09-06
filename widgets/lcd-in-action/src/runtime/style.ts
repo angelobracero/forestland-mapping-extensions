@@ -8,6 +8,7 @@ export const containerStyle = css({
   margin: '0 auto',
   padding: '56px 24px',
   boxSizing: 'border-box',
+  minHeight: 'calc(100dvh - 40px)',
 })
 
 export const headerStyle = css({
@@ -195,25 +196,9 @@ export const overlayCaptionDateStyle = css({
   marginTop: '4px',
 })
 
-export const overlayCloseButtonStyle = css({
-  position: 'fixed',
-  top: '20px',
-  right: '24px',
-  width: '40px',
-  height: '40px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '1.6rem',
-  lineHeight: 1,
-  color: '#fff',
-  background: 'rgba(255, 255, 255, 0.1)',
-  border: 'none',
-  borderRadius: '50%',
-  cursor: 'pointer',
-  transition: 'background-color 0.2s ease',
-
-  '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
+export const emptyStateStyle = css({
+  textAlign: 'center',
+  color: '#888',
+  padding: '32px 0',
 })
+

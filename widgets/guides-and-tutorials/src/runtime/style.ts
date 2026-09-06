@@ -187,6 +187,89 @@ export const mockBrowserCaptionStyle = css({
   lineHeight: 1.4,
 })
 
+// A real screenshot standing in for the mock browser's content -- same box
+// (mockBrowserContentStyle's aspect-ratio), just filled with an image
+// instead of an icon/caption, and clickable to zoom.
+export const mockBrowserImageStyle = css({
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  cursor: 'zoom-in',
+})
+
+// A short screen recording, shown at its own natural aspect ratio (no
+// browser-chrome frame, no fixed/cropped box -- a video's proportions vary
+// too much to force into the same 16:10 box the screenshot mockup uses).
+// Autoplaying/looping/muted with no controls, so it reads as a looping demo
+// clip rather than a video player someone has to press play on.
+export const videoCardStyle = css({
+  flex: '1 1 320px',
+  minWidth: 0,
+  lineHeight: 0,
+  borderRadius: '10px',
+  overflow: 'hidden',
+  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+  cursor: 'zoom-in',
+
+  // Same reasoning as mockBrowserStyle: keep media above text once the
+  // step row wraps to a single column.
+  '@media (max-width: 720px)': {
+    order: 1,
+  },
+})
+
+export const videoElementStyle = css({
+  display: 'block',
+  width: '100%',
+  height: 'auto',
+})
+
+// Full-screen click-to-zoom overlay for a step's screenshot -- same pattern
+// as gad-gallery/lcd-in-action's photo lightbox.
+export const imageOverlayStyle = css({
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '40px 24px',
+  boxSizing: 'border-box',
+  zIndex: 10000,
+  cursor: 'zoom-out',
+
+  '@keyframes guideOverlayFadeIn': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
+  animation: 'guideOverlayFadeIn 0.2s ease',
+})
+
+export const imageOverlayImageStyle = css({
+  maxWidth: '90vw',
+  maxHeight: '78vh',
+  objectFit: 'contain',
+  borderRadius: '8px',
+  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+  cursor: 'default',
+
+  '@keyframes guideOverlayZoomIn': {
+    from: { transform: 'scale(0.85)', opacity: 0 },
+    to: { transform: 'scale(1)', opacity: 1 },
+  },
+  animation: 'guideOverlayZoomIn 0.25s ease',
+})
+
+export const imageOverlayCaptionStyle = css({
+  color: '#fff',
+  textAlign: 'center',
+  marginTop: '18px',
+  fontSize: '1.05rem',
+  fontWeight: 600,
+  cursor: 'default',
+})
+
 export const stepContentStyle = css({
   flex: '1 1 320px',
   minWidth: 0,

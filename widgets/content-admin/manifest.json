@@ -1,0 +1,19 @@
+{
+  "name": "content-admin",
+  "label": "Content Admin",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "A widget, restricted to authorized admin accounts, that lets them add, edit, and remove the GAD Activities, LCD in Action media, and About AVPs shown on their public pages.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {},
+  "translatedLocales": [
+    "en"
+  ],
+  "defaultSize": {
+    "width": 900,
+    "height": 700
+  }
+}

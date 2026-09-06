@@ -1,7 +1,7 @@
 import { css } from "jimu-core";
 
 export const pageStyle = css({
-  minHeight: 'calc(100dvh - 90px)',
+  minHeight: 'calc(100dvh - 40px)',
   boxSizing: 'border-box',
 })
 
@@ -170,63 +170,11 @@ export const clearFiltersButtonStyle = css({
   textDecoration: 'underline',
 })
 
-export const groupListStyle = css({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-})
-
-export const groupCardStyle = css({
+export const commentsCardStyle = css({
   backgroundColor: '#fff',
   borderRadius: '10px',
   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
   overflow: 'hidden',
-})
-
-export const groupHeaderStyle = css({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '12px',
-  padding: '18px 20px',
-  cursor: 'pointer',
-  userSelect: 'none',
-
-  '&:hover': {
-    backgroundColor: '#f7f9f7',
-  },
-})
-
-export const groupHeaderLeftStyle = css({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-})
-
-export const groupTitleStyle = css({
-  fontSize: '1.1rem',
-  fontWeight: 700,
-  color: '#0b5e2e',
-  margin: 0,
-})
-
-export const groupCountBadgeStyle = css({
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: '#0b5e2e',
-  backgroundColor: '#e6f3ea',
-  borderRadius: '999px',
-  padding: '3px 10px',
-})
-
-export const chevronStyle = css({
-  fontSize: '0.85rem',
-  color: '#888',
-  transition: 'transform 0.2s ease',
-})
-
-export const chevronOpenStyle = css({
-  transform: 'rotate(180deg)',
 })
 
 export const commentListStyle = css({
@@ -240,9 +188,14 @@ export const commentItemStyle = css({
   gap: '14px',
   padding: '18px 20px',
   alignItems: 'flex-start',
+  cursor: 'pointer',
 
   '&:not(:last-of-type)': {
     borderBottom: '1px solid #f0f0f0',
+  },
+
+  '&:hover': {
+    backgroundColor: '#f7faf8',
   },
 })
 
@@ -335,6 +288,78 @@ export const commentTextStyle = css({
   margin: '8px 0 0',
 })
 
+// Enlarged read-only view of a single comment, opened by clicking its card.
+export const commentDetailHeaderRowStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '14px',
+  marginBottom: '18px',
+})
+
+export const commentDetailAvatarStyle = css({
+  flexShrink: 0,
+  width: '52px',
+  height: '52px',
+  borderRadius: '50%',
+  background: 'linear-gradient(135deg, #0b5e2e 0%, #0d7a3a 100%)',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1.1rem',
+  fontWeight: 600,
+})
+
+export const commentDetailNameStyle = css({
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  color: '#1a1a1a',
+})
+
+export const commentDetailDateStyle = css({
+  fontSize: '0.85rem',
+  color: '#999',
+  marginTop: '2px',
+})
+
+export const commentDetailChipsStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px',
+  marginBottom: '20px',
+})
+
+export const commentDetailChipStyle = css({
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  color: '#0b5e2e',
+  backgroundColor: '#e6f3ea',
+  padding: '4px 12px',
+  borderRadius: '999px',
+})
+
+export const commentDetailQuoteStyle = css({
+  fontSize: '1.05rem',
+  color: '#222',
+  lineHeight: 1.75,
+  whiteSpace: 'pre-wrap',
+  backgroundColor: '#f7faf8',
+  borderLeft: '4px solid #0b5e2e',
+  borderRadius: '0 8px 8px 0',
+  padding: '16px 20px',
+  margin: 0,
+})
+
+export const commentDetailAttachmentsLabelStyle = css({
+  fontSize: '0.78rem',
+  fontWeight: 700,
+  color: '#888',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginTop: '22px',
+  marginBottom: '8px',
+})
+
 export const attachmentListStyle = css({
   display: 'flex',
   flexWrap: 'wrap',
@@ -362,4 +387,10 @@ export const emptyStateStyle = css({
   textAlign: 'center',
   color: '#888',
   padding: '32px 0',
+})
+
+export const confirmDialogBodyStyle = css({
+  fontSize: '0.95rem',
+  color: '#333',
+  lineHeight: 1.6,
 })

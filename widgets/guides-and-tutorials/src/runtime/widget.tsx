@@ -1,4 +1,5 @@
 import { type AllWidgetProps } from "jimu-core";
+import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
 
 import {
@@ -23,6 +24,12 @@ import {
   mockBrowserContentStyle,
   mockBrowserIconStyle,
   mockBrowserCaptionStyle,
+  mockBrowserImageStyle,
+  videoCardStyle,
+  videoElementStyle,
+  imageOverlayStyle,
+  imageOverlayImageStyle,
+  imageOverlayCaptionStyle,
   stepContentStyle,
   stepHeaderStyle,
   stepNumberBadgeStyle,
@@ -45,6 +52,12 @@ const features = [
       "Narrow down LC maps and feedback by Region, then Province, so you only see what's relevant to your area.",
   },
   {
+    icon: "\u{1F4E4}",
+    title: "Add Your Own Shapefile",
+    description:
+      "Add your own zipped shapefile to the map to compare it against the Proposed LC Map -- it's visible only to you and never uploaded anywhere.",
+  },
+  {
     icon: "\u{1F4AC}",
     title: "Submit Feedback",
     description:
@@ -54,7 +67,13 @@ const features = [
     icon: "\u{1F4CB}",
     title: "Track All Feedback",
     description:
-      "The View Feedbacks page summarizes every comment submitted, grouped and searchable by province.",
+      "The View Feedbacks page summarizes every comment submitted, searchable and filterable by Region, Province, LC Map Number, and Office.",
+  },
+  {
+    icon: "\u{1F5FA}\u{FE0F}",
+    title: "Jump From a Comment to Its Map",
+    description:
+      "From View Feedbacks, click “View on Map” on any comment to go straight to its Proposed LC Map, already filtered and zoomed in on that comment.",
   },
   {
     icon: "\u{1F4F8}",
@@ -75,6 +94,14 @@ type Step = {
   caption: string;
   title: string;
   description: string;
+  // Real screenshot to show instead of the icon/caption placeholder, once
+  // one exists for this step. Click to zoom.
+  image?: string;
+  // Short screen recording to show instead -- takes priority over `image`
+  // when both are set. Hosted in R2 (same as GAD/LCD/About media) rather
+  // than bundled, since this project's build doesn't have a loader for
+  // video files. Autoplays on loop, muted, no controls.
+  video?: string;
 };
 
 const steps: Step[] = [
@@ -84,6 +111,7 @@ const steps: Step[] = [
     title: "Go to “Proposed LC Maps”",
     description:
       "Open the Proposed LC Maps page from the main menu. This loads the interactive map along with the filter panel.",
+    video: "https://files.angelobracero.com/uploads/videos/3b003799-6ea0-4edb-b678-7284dd9d0e00.mp4",
   },
   {
     icon: "\u{1F4CD}",
@@ -91,6 +119,23 @@ const steps: Step[] = [
     title: "Select a Region, Province, and LC Map Number",
     description:
       "Use the three dropdowns to narrow down to the exact LC map you want to review: pick a Region first, then a Province, then the LC Map Number. Each choice updates the options below it, and picking the LC Map Number loads that map onto the view and zooms to its extent automatically.",
+    video: "https://files.angelobracero.com/uploads/videos/f3b99adc-eb45-4f5e-92ca-14c8c78761da.mp4",
+  },
+  {
+    icon: "\u{1F4E4}",
+    caption: "Add Own Layer",
+    title: "Add Your Own Shapefile (Optional)",
+    description:
+      "Click “Add Own Layer” and choose a zipped shapefile from your computer to add it to the map for comparison -- this happens entirely in your browser, so it's visible only to you and is never uploaded or saved anywhere.",
+    video: "https://files.angelobracero.com/uploads/videos/a346033e-758d-44c0-ba18-de01be782732.mp4",
+  },
+  {
+    icon: "\u{1F5C2}\u{FE0F}",
+    caption: "Layers on Map list",
+    title: "Manage Layers in the List",
+    description:
+      "The Layers on Map list shows the official LC map plus any shapefiles you've added. Click a layer's name to zoom to it, or click Remove to take one of your own layers off the map -- the official LC map can't be removed from there, only your own uploads.",
+    video: "https://files.angelobracero.com/uploads/videos/19ab8fac-db5b-4f39-b824-562230ddfdea.mp4",
   },
   {
     icon: "\u{1F4AC}",
@@ -98,20 +143,15 @@ const steps: Step[] = [
     title: "Review the Map and Existing Comments",
     description:
       "Comments already submitted by other reviewers appear as points on the map, alongside the LC map boundaries.",
+    video: "https://files.angelobracero.com/uploads/videos/95a605da-ffd4-4d67-8e10-9f8003493f68.mp4",
   },
   {
     icon: "\u{270F}\u{FE0F}",
     caption: "Office · Email · Comment",
     title: "Add Your Comment",
     description:
-      "Click on the area you want to comment on, then fill in your Office, Email, and Comment. Your name and the region/province/LC map number are filled in for you automatically, based on your account and the map you selected.",
-  },
-  {
-    icon: "\u{2705}",
-    caption: "View Feedbacks → grouped by Province",
-    title: "Submit and Track It",
-    description:
-      "Once submitted, your comment is saved and will appear in the View Feedbacks page, grouped and searchable by province.",
+      "Click on the area you want to comment on, then fill in your Office, Email, and Comment. Your name and the region/province/LC map number are filled in for you automatically, based on your account and the map you selected. If you're drawing a shape (like a polygon or line) instead of a single point, double-click to finish it. Once submitted, your comment is saved and will appear in the View Feedbacks page, grouped and searchable by province.",
+    video: "https://files.angelobracero.com/uploads/videos/e400ce04-4c9d-4a9f-a93a-d8369db3aaf7.mp4",
   },
 ];
 
@@ -121,7 +161,8 @@ const viewFeedbackSteps: Step[] = [
     caption: "View Feedbacks page",
     title: "Go to “View Feedbacks”",
     description:
-      "Open the View Feedbacks page from the main menu to see every comment submitted on the Proposed LC Maps, grouped by province.",
+      "Open the View Feedbacks page from the main menu to see every comment submitted on the Proposed LC Maps.",
+    video: "https://files.angelobracero.com/uploads/videos/eab6ff1a-2288-4bdb-bc3c-89c0da75d195.mp4",
   },
   {
     icon: "\u{1F50D}",
@@ -129,20 +170,23 @@ const viewFeedbackSteps: Step[] = [
     title: "Narrow It Down",
     description:
       "Type into Search to match comment text, editor, or office, or click the Region, Province, and LC Map Number filter pills to zero in on exactly what you're looking for. You can select more than one of each.",
-  },
-  {
-    icon: "\u{1F4C2}",
-    caption: "Province card expands",
-    title: "Open a Province",
-    description:
-      "Click any province card to expand it and reveal every comment submitted for that province.",
+    video: "https://files.angelobracero.com/uploads/videos/43e55bd2-70f7-4568-a15e-75f32e312e31.mp4",
   },
   {
     icon: "\u{1F4AC}",
     caption: "Editor · Office · LC Map · Date",
     title: "Read a Comment",
     description:
-      "Each comment shows who submitted it, their office, which LC map it's about, and when, along with the full comment text.",
+      "Each comment shows who submitted it, their office, which LC map it's about, and when, along with the full comment text. Click a comment to open it enlarged for easier reading.",
+    video: "https://files.angelobracero.com/uploads/videos/163c4d81-f215-4904-95a5-e7e86f6f64da.mp4",
+  },
+  {
+    icon: "\u{1F5FA}\u{FE0F}",
+    caption: "View on Map",
+    title: "Jump to a Comment on the Map",
+    description:
+      "Inside the enlarged comment view, click “View on Map” to go straight to that comment's Proposed LC Map -- it automatically selects the right Region, Province, and LC Map Number, then zooms in on that exact comment.",
+    video: "https://files.angelobracero.com/uploads/videos/c40a3990-b174-49c1-95af-e81f34bd3c20.mp4",
   },
   {
     icon: "\u{1F4CE}",
@@ -150,17 +194,35 @@ const viewFeedbackSteps: Step[] = [
     title: "Check Attachments",
     description:
       "If a comment has supporting photos or files attached, they appear as clickable links right below it.",
-  },
-  {
-    icon: "\u{2195}\u{FE0F}",
-    caption: "Sort by date: Newest ▾",
-    title: "Sort by Date",
-    description:
-      "Use the Sort by date control to see the newest submissions first, or flip it to see the oldest ones.",
+    video: "https://files.angelobracero.com/uploads/videos/82499f5c-f3a5-4305-9f2c-d1045bf539ce.mp4",
   },
 ];
 
-function MockBrowser(props: { icon: string; caption: string }) {
+function MockBrowser(props: {
+  icon: string;
+  caption: string;
+  image?: string;
+  video?: string;
+  onZoom?: () => void;
+}) {
+  // A video's proportions vary too much to force into the fixed 16:10
+  // "browser window" box below (that's what was cropping it) -- shown at
+  // its own natural size instead, with no browser-chrome frame.
+  if (props.video) {
+    return (
+      <div css={videoCardStyle} onClick={props.onZoom}>
+        <video
+          css={videoElementStyle}
+          src={props.video}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      </div>
+    );
+  }
+
   return (
     <div css={mockBrowserStyle}>
       <div css={mockBrowserChromeStyle}>
@@ -177,19 +239,52 @@ function MockBrowser(props: { icon: string; caption: string }) {
           style={{ backgroundColor: "#28c840" }}
         />
       </div>
-      <div css={mockBrowserContentStyle}>
-        <span css={mockBrowserIconStyle}>{props.icon}</span>
-        <span css={mockBrowserCaptionStyle}>{props.caption}</span>
-      </div>
+      {props.image ? (
+        <div css={mockBrowserContentStyle} style={{ padding: 0 }}>
+          <img
+            css={mockBrowserImageStyle}
+            src={props.image}
+            alt={props.caption}
+            onClick={props.onZoom}
+          />
+        </div>
+      ) : (
+        <div css={mockBrowserContentStyle}>
+          <span css={mockBrowserIconStyle}>{props.icon}</span>
+          <span css={mockBrowserCaptionStyle}>{props.caption}</span>
+        </div>
+      )}
     </div>
   );
 }
 
 function StepWalkthrough(props: { steps: Step[] }) {
+  const [zoomedStep, setZoomedStep] = useState<Step | null>(null);
+
+  useEffect(() => {
+    if (!zoomedStep) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomedStep(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [zoomedStep]);
+
   return (
     <div css={stepListStyle}>
       {props.steps.map((step, index) => {
-        const media = <MockBrowser icon={step.icon} caption={step.caption} />;
+        const media = (
+          <MockBrowser
+            icon={step.icon}
+            caption={step.caption}
+            image={step.image}
+            video={step.video}
+            onZoom={() => setZoomedStep(step)}
+          />
+        );
 
         const content = (
           <div css={stepContentStyle}>
@@ -218,6 +313,33 @@ function StepWalkthrough(props: { steps: Step[] }) {
           </div>
         );
       })}
+
+      {zoomedStep?.video ? (
+        <div css={imageOverlayStyle} onClick={() => setZoomedStep(null)}>
+          <video
+            css={imageOverlayImageStyle}
+            src={zoomedStep.video}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p css={imageOverlayCaptionStyle}>{zoomedStep.title}</p>
+        </div>
+      ) : (
+        zoomedStep?.image && (
+          <div css={imageOverlayStyle} onClick={() => setZoomedStep(null)}>
+            <img
+              css={imageOverlayImageStyle}
+              src={zoomedStep.image}
+              alt={zoomedStep.caption}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p css={imageOverlayCaptionStyle}>{zoomedStep.title}</p>
+          </div>
+        )
+      )}
     </div>
   );
 }

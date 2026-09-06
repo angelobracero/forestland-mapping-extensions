@@ -121,7 +121,7 @@ function Widget(props: AllWidgetProps<any>) {
             the systematic evaluation of the country's remaining UPFs—public
             lands that have not yet undergone official land classification.
             These activities are carried out in accordance with
-            <b>Section 3, Article XII of the 1987 Philippine Constitution</b>,
+            <b> Section 3, Article XII of the 1987 Philippine Constitution</b>,
             which governs the classification of lands of the public domain.
           </p>
 
@@ -136,7 +136,7 @@ function Widget(props: AllWidgetProps<any>) {
               Secretary of the Department of Environment and Natural Resources
               (DENR)
             </b>{" "}
-            for the issuance of the corresponding
+            for the issuance of the corresponding{" "}
             <b>DENR Administrative Order</b>.
           </p>
 

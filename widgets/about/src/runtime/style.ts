@@ -8,7 +8,7 @@ export const containerStyle = css({
   margin: '0 auto',
   padding: '56px 24px',
   boxSizing: 'border-box',
-  height: 'calc(100dvh - 90px)',
+  height: 'calc(100dvh - 40px)',
 })
 
 export const headerStyle = css({
@@ -58,9 +58,6 @@ export const videoCardStyle = css({
   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
 })
 
-// TODO: this is a placeholder in place of a real embedded video (e.g. a
-// built-in Embed widget or an <iframe> pointed at the actual AVP). Swap
-// this thumbnail for the real video once the AVP files/links are ready.
 export const videoThumbStyle = css({
   position: 'relative',
   aspectRatio: '16 / 9',
@@ -93,4 +90,10 @@ export const videoDescStyle = css({
   color: '#666',
   lineHeight: 1.6,
   marginTop: '8px',
+})
+
+export const emptyStateStyle = css({
+  textAlign: 'center',
+  color: '#888',
+  padding: '32px 0',
 })

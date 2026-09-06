@@ -1,8 +1,17 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Paper, Select, Option, TextInput, enqueueNotification } from "jimu-ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Paper,
+  enqueueNotification,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+} from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import type AttachmentInfo from "@arcgis/core/rest/query/support/AttachmentInfo";
+import { checkIsContentAdmin } from "widgets/shared-code/admin-auth";
+import { getFieldValue } from "widgets/shared-code/field-utils";
 
 import {
   pageStyle,
@@ -11,153 +20,20 @@ import {
   titleStyle,
   dividerStyle,
   subtitleStyle,
-  filterBarStyle,
-  filterFieldStyle,
-  searchFieldStyle,
-  filterLabelStyle,
-  filtersToggleStyle,
-  filtersToggleCountStyle,
-  chipFiltersStyle,
-  chipGroupStyle,
-  chipStyle,
-  chipActiveStyle,
-  filterFooterStyle,
-  clearFiltersButtonStyle,
-  groupListStyle,
-  groupCardStyle,
-  groupHeaderStyle,
-  groupHeaderLeftStyle,
-  groupTitleStyle,
-  groupCountBadgeStyle,
-  chevronStyle,
-  chevronOpenStyle,
-  commentListStyle,
-  commentItemStyle,
-  commentAvatarStyle,
-  commentBodyStyle,
-  commentHeaderRowStyle,
-  commentHeaderRightStyle,
-  commentAuthorNameStyle,
-  commentDateStyle,
-  deleteButtonStyle,
-  commentSubMetaStyle,
-  commentMetaDotStyle,
-  commentTextStyle,
-  attachmentListStyle,
-  attachmentLinkStyle,
   emptyStateStyle,
+  confirmDialogBodyStyle,
 } from "./style";
+import {
+  type FeedbackComment,
+  type SortOrder,
+  type DateRangePreset,
+  DATE_RANGE_MS,
+  toTimestamp,
+} from "./feedback";
+import { FeedbackFilters } from "./components/FeedbackFilters";
+import { CommentList } from "./components/CommentList";
 
 const COMMENT_LAYER_PORTAL_ITEM_ID = "f534c711fbdb4837a74ee79de867ffa4";
-
-// Only these exact ArcGIS Online accounts get the delete option, regardless
-// of what edit privileges anyone else in the org is granted. To let someone
-// else delete comments too, add their AGOL username here (check the
-// "Username" field on their profile, not their display name or email).
-const DELETE_ALLOWED_USERNAMES = ["albracero"];
-
-type FeedbackComment = {
-  objectId: number;
-  editor: string;
-  office: string;
-  comment: string;
-  region: string;
-  province: string;
-  lcNumber: string;
-  createdDate: number | null;
-  attachments: AttachmentInfo[];
-};
-
-type SortOrder = "newest" | "oldest";
-type DateRangePreset = "all" | "7d" | "30d" | "90d";
-
-const DATE_RANGE_MS: Record<Exclude<DateRangePreset, "all">, number> = {
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-  "90d": 90 * 24 * 60 * 60 * 1000,
-};
-
-// The comment layer's field names/casing aren't fully confirmed (only
-// region/province/lc_number are, from the lcmap-filter widget). Look fields
-// up case- and punctuation-insensitively instead of guessing exact casing.
-// Normalizes a date field's raw value into an epoch-ms timestamp. The
-// value from the layer could already be a number, or a date string
-// (e.g. ISO format) -- subtracting two raw strings produces NaN, which
-// makes Array.prototype.sort() treat every pair as "equal" and silently
-// leave the order unchanged.
-function toTimestamp(rawValue: unknown): number | null {
-  if (rawValue === null || rawValue === undefined || rawValue === "") {
-    return null;
-  }
-
-  const timestamp =
-    typeof rawValue === "number" ? rawValue : new Date(rawValue as string).getTime();
-
-  return Number.isNaN(timestamp) ? null : timestamp;
-}
-
-function getFieldValue(
-  attributes: Record<string, any>,
-  ...candidates: string[]
-): any {
-  const normalize = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const normalizedCandidates = candidates.map(normalize);
-
-  const key = Object.keys(attributes).find((attributeName) =>
-    normalizedCandidates.includes(normalize(attributeName)),
-  );
-
-  return key ? attributes[key] : undefined;
-}
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-
-  if (parts.length === 0) return "?";
-
-  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
-}
-
-function formatDate(value: number | null) {
-  if (!value) return "";
-
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
-
-// `comments` must already be sorted by date (see sortedComments) -- that
-// order is reused both for the items within each group and, via each
-// group's first item, for the groups themselves. Previously groups were
-// always ordered alphabetically by province regardless of sortOrder, so
-// changing "Sort by date" had no visible effect on province order -- and
-// with only one comment per province, there was nothing left to reorder.
-function groupByProvince(comments: FeedbackComment[], sortOrder: SortOrder) {
-  const groups = new Map<string, FeedbackComment[]>();
-
-  comments.forEach((comment) => {
-    const key = comment.province || "Unspecified Province";
-    const existing = groups.get(key) ?? [];
-
-    existing.push(comment);
-    groups.set(key, existing);
-  });
-
-  return [...groups.entries()]
-    .map(([province, items]) => ({ province, items }))
-    .sort((a, b) => {
-      const aTime = a.items[0]?.createdDate ?? 0;
-      const bTime = b.items[0]?.createdDate ?? 0;
-
-      return sortOrder === "newest" ? bTime - aTime : aTime - bTime;
-    });
-}
 
 function Widget(props: AllWidgetProps<any>) {
   const [comments, setComments] = useState<FeedbackComment[]>([]);
@@ -172,18 +48,17 @@ function Widget(props: AllWidgetProps<any>) {
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("all");
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [expandedProvince, setExpandedProvince] = useState<string | null>(
-    null,
-  );
 
-  // Only DELETE_ALLOWED_USERNAMES gets a delete option on each comment.
-  // This is checked against the signed-in user's exact AGOL username
-  // (from Experience Builder's own app state), not against general edit
-  // privileges -- since this item is shared with the whole org, other
-  // members may also have full edit rights, but that must not grant them
-  // delete access here.
+  // Only content admins (super admins, or anyone listed in the
+  // app_admins table -- see widgets/shared-code/admin-auth.ts) get a
+  // delete option on each comment. This is checked against the signed-in
+  // user's exact AGOL username (from Experience Builder's own app state),
+  // not against general edit privileges -- since this item is shared with
+  // the whole org, other members may also have full edit rights, but that
+  // must not grant them delete access here.
   const [canDelete, setCanDelete] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const commentLayerRef = useRef<FeatureLayer | null>(null);
 
   // LOAD COMMENTS FROM THE REAL COMMENT FEATURE LAYER
@@ -204,11 +79,7 @@ function Widget(props: AllWidgetProps<any>) {
         const currentUsername = getAppStore().getState().portalSelf?.user
           ?.username;
 
-        setCanDelete(
-          Boolean(
-            currentUsername && DELETE_ALLOWED_USERNAMES.includes(currentUsername),
-          ),
-        );
+        setCanDelete(await checkIsContentAdmin(currentUsername));
 
         const query = commentLayer.createQuery();
 
@@ -396,11 +267,6 @@ function Widget(props: AllWidgetProps<any>) {
     return sorted;
   }, [filteredComments, sortOrder]);
 
-  const groups = useMemo(
-    () => groupByProvince(sortedComments, sortOrder),
-    [sortedComments, sortOrder],
-  );
-
   const toggleRegion = (region: string) => {
     setSelectedRegions((current) =>
       current.includes(region)
@@ -445,16 +311,21 @@ function Widget(props: AllWidgetProps<any>) {
     setDateRangePreset("all");
   };
 
-  const handleDeleteComment = async (objectId: number) => {
+  const requestDeleteComment = (objectId: number) => {
+    setPendingDeleteId(objectId);
+  };
+
+  const cancelDeleteComment = () => {
+    setPendingDeleteId(null);
+  };
+
+  const confirmDeleteComment = async () => {
     const layer = commentLayerRef.current;
+    const objectId = pendingDeleteId;
 
-    if (!layer) return;
+    setPendingDeleteId(null);
 
-    const confirmed = window.confirm(
-      "Delete this comment? This cannot be undone.",
-    );
-
-    if (!confirmed) return;
+    if (!layer || objectId === null) return;
 
     setDeletingId(objectId);
 
@@ -491,29 +362,6 @@ function Widget(props: AllWidgetProps<any>) {
     }
   };
 
-  // Expanding/collapsing a province group changes the page's height,
-  // which can make the browser shift the scroll position on its own.
-  // Capture the scroll offset right before the toggle and restore it in
-  // a layout effect (runs before the browser paints) so the page stays
-  // put instead of jumping.
-  const pendingScrollRestoreRef = useRef<number | null>(null);
-
-  const toggleGroup = (province: string) => {
-    pendingScrollRestoreRef.current =
-      document.scrollingElement?.scrollTop ?? window.scrollY;
-
-    setExpandedProvince((current) =>
-      current === province ? null : province,
-    );
-  };
-
-  useLayoutEffect(() => {
-    if (pendingScrollRestoreRef.current === null) return;
-
-    document.scrollingElement?.scrollTo({ top: pendingScrollRestoreRef.current });
-    pendingScrollRestoreRef.current = null;
-  }, [expandedProvince]);
-
   return (
     <Paper css={pageStyle} className="jimu-widget" component="main">
       <div css={containerStyle}>
@@ -521,267 +369,76 @@ function Widget(props: AllWidgetProps<any>) {
           <h2 css={titleStyle}>View Feedbacks</h2>
           <div css={dividerStyle} />
           <p css={subtitleStyle}>
-            Summary of comments submitted on the Proposed LC Maps, grouped by
-            province.
+            Summary of comments submitted on the Proposed LC Maps.
           </p>
         </div>
 
-        <div>
-          <div css={filterBarStyle}>
-            <div css={searchFieldStyle}>
-              <label css={filterLabelStyle}>Search</label>
-              <TextInput
-                type="search"
-                allowClear
-                placeholder="Search comments, editor, or office..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </div>
-
-            <div css={filterFieldStyle}>
-              <label css={filterLabelStyle}>Sort by date</label>
-              <Select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              >
-                <Option value="newest">Newest first</Option>
-                <Option value="oldest">Oldest first</Option>
-              </Select>
-            </div>
-
-            <div css={filterFieldStyle}>
-              <label css={filterLabelStyle}>Date range</label>
-              <Select
-                value={dateRangePreset}
-                onChange={(e) =>
-                  setDateRangePreset(e.target.value as DateRangePreset)
-                }
-              >
-                <Option value="all">All time</Option>
-                <Option value="7d">Last 7 days</Option>
-                <Option value="30d">Last 30 days</Option>
-                <Option value="90d">Last 90 days</Option>
-              </Select>
-            </div>
-
-            <button
-              type="button"
-              css={filtersToggleStyle}
-              onClick={() => setFiltersExpanded((current) => !current)}
-            >
-              {filtersExpanded ? "Hide filters" : "More filters"}
-              {activeChipFilterCount > 0 && (
-                <span css={filtersToggleCountStyle}>
-                  {activeChipFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {filtersExpanded && (
-            <div css={chipFiltersStyle}>
-              <div css={filterFieldStyle}>
-                <label css={filterLabelStyle}>Region</label>
-                <div css={chipGroupStyle}>
-                  {regions.map((region) => {
-                    const isSelected = selectedRegions.includes(region);
-
-                    return (
-                      <button
-                        key={region}
-                        type="button"
-                        css={[chipStyle, isSelected && chipActiveStyle]}
-                        onClick={() => toggleRegion(region)}
-                      >
-                        {region}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div css={filterFieldStyle}>
-                <label css={filterLabelStyle}>Province</label>
-                <div css={chipGroupStyle}>
-                  {provinces.map((province) => {
-                    const isSelected = selectedProvinces.includes(province);
-
-                    return (
-                      <button
-                        key={province}
-                        type="button"
-                        css={[chipStyle, isSelected && chipActiveStyle]}
-                        onClick={() => toggleProvince(province)}
-                      >
-                        {province}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div css={filterFieldStyle}>
-                <label css={filterLabelStyle}>LC Map Number</label>
-                <div css={chipGroupStyle}>
-                  {lcNumbers.map((lcNumber) => {
-                    const isSelected = selectedLcNumbers.includes(lcNumber);
-
-                    return (
-                      <button
-                        key={lcNumber}
-                        type="button"
-                        css={[chipStyle, isSelected && chipActiveStyle]}
-                        onClick={() => toggleLcNumber(lcNumber)}
-                      >
-                        {lcNumber}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div css={filterFieldStyle}>
-                <label css={filterLabelStyle}>Office</label>
-                <div css={chipGroupStyle}>
-                  {offices.map((office) => {
-                    const isSelected = selectedOffices.includes(office);
-
-                    return (
-                      <button
-                        key={office}
-                        type="button"
-                        css={[chipStyle, isSelected && chipActiveStyle]}
-                        onClick={() => toggleOffice(office)}
-                      >
-                        {office}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {filtersActive && (
-            <div css={filterFooterStyle} style={{ marginTop: "12px" }}>
-              <span>
-                Showing {filteredComments.length} of {comments.length}{" "}
-                comments
-              </span>
-              <button css={clearFiltersButtonStyle} onClick={clearFilters}>
-                Clear filters
-              </button>
-            </div>
-          )}
-        </div>
+        <FeedbackFilters
+          searchText={searchText}
+          onSearchTextChange={setSearchText}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          dateRangePreset={dateRangePreset}
+          onDateRangePresetChange={setDateRangePreset}
+          filtersExpanded={filtersExpanded}
+          onToggleFiltersExpanded={() =>
+            setFiltersExpanded((current) => !current)
+          }
+          activeChipFilterCount={activeChipFilterCount}
+          regions={regions}
+          provinces={provinces}
+          lcNumbers={lcNumbers}
+          offices={offices}
+          selectedRegions={selectedRegions}
+          selectedProvinces={selectedProvinces}
+          selectedLcNumbers={selectedLcNumbers}
+          selectedOffices={selectedOffices}
+          onToggleRegion={toggleRegion}
+          onToggleProvince={toggleProvince}
+          onToggleLcNumber={toggleLcNumber}
+          onToggleOffice={toggleOffice}
+          filtersActive={filtersActive}
+          filteredCount={filteredComments.length}
+          totalCount={comments.length}
+          onClearFilters={clearFilters}
+        />
 
         {loading ? (
           <div css={emptyStateStyle}>Loading feedback...</div>
         ) : error ? (
           <div css={emptyStateStyle}>{error}</div>
-        ) : groups.length === 0 ? (
+        ) : sortedComments.length === 0 ? (
           <div css={emptyStateStyle}>
             {filtersActive
               ? "No feedback matches your filters."
               : "No feedback submitted yet."}
           </div>
         ) : (
-          <div css={groupListStyle}>
-            {groups.map((group) => {
-              const isOpen = filtersActive || expandedProvince === group.province;
-
-              return (
-                <div key={group.province} css={groupCardStyle}>
-                  <div
-                    css={groupHeaderStyle}
-                    onClick={() => toggleGroup(group.province)}
-                  >
-                    <div css={groupHeaderLeftStyle}>
-                      <h3 css={groupTitleStyle}>{group.province}</h3>
-                      <span css={groupCountBadgeStyle}>
-                        {group.items.length}{" "}
-                        {group.items.length === 1 ? "comment" : "comments"}
-                      </span>
-                    </div>
-                    <span
-                      css={[chevronStyle, isOpen && chevronOpenStyle]}
-                    >
-                      &#9660;
-                    </span>
-                  </div>
-
-                  {isOpen && (
-                    <div css={commentListStyle}>
-                      {group.items.map((item) => (
-                        <div key={item.objectId} css={commentItemStyle}>
-                          <div css={commentAvatarStyle}>
-                            {getInitials(item.editor || "?")}
-                          </div>
-                          <div css={commentBodyStyle}>
-                            <div css={commentHeaderRowStyle}>
-                              <span css={commentAuthorNameStyle}>
-                                {item.editor}
-                              </span>
-                              <div css={commentHeaderRightStyle}>
-                                <span css={commentDateStyle}>
-                                  {formatDate(item.createdDate)}
-                                </span>
-                                {canDelete && (
-                                  <button
-                                    type="button"
-                                    css={deleteButtonStyle}
-                                    aria-label="Delete comment"
-                                    disabled={deletingId === item.objectId}
-                                    onClick={() =>
-                                      handleDeleteComment(item.objectId)
-                                    }
-                                  >
-                                    {deletingId === item.objectId
-                                      ? "…"
-                                      : "\u{1F5D1}\u{FE0F}"}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div css={commentSubMetaStyle}>
-                              <span>{item.office}</span>
-                              {item.lcNumber && (
-                                <>
-                                  <span css={commentMetaDotStyle}>
-                                    &middot;
-                                  </span>
-                                  <span>{item.lcNumber}</span>
-                                </>
-                              )}
-                            </div>
-                            <p css={commentTextStyle}>{item.comment}</p>
-                            {item.attachments.length > 0 && (
-                              <div css={attachmentListStyle}>
-                                {item.attachments.map((attachment) => (
-                                  <a
-                                    key={attachment.id}
-                                    css={attachmentLinkStyle}
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    &#128206; {attachment.name}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <CommentList
+            comments={sortedComments}
+            canDelete={canDelete}
+            deletingId={deletingId}
+            onRequestDelete={requestDeleteComment}
+          />
         )}
       </div>
+
+      <Modal isOpen={pendingDeleteId !== null} toggle={cancelDeleteComment} centered>
+        <ModalHeader toggle={cancelDeleteComment}>Delete comment</ModalHeader>
+        <ModalBody>
+          <p css={confirmDialogBodyStyle}>
+            Delete this comment? This cannot be undone.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button type="default" onClick={cancelDeleteComment}>
+            Cancel
+          </Button>
+          <Button type="danger" onClick={confirmDeleteComment}>
+            Delete
+          </Button>
+        </ModalFooter>
+      </Modal>
     </Paper>
   );
 }

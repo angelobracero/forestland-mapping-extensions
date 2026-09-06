@@ -1,6 +1,9 @@
 import { type AllWidgetProps } from "jimu-core";
 import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import { getFieldValue, formatDateLong } from "widgets/shared-code/field-utils";
+import { CONTENT_ITEM_ID } from "widgets/shared-code/content-config";
 
 import {
   containerStyle,
@@ -23,8 +26,12 @@ import {
   overlayCaptionStyle,
   overlayCaptionTitleStyle,
   overlayCaptionDateStyle,
-  overlayCloseButtonStyle,
+  emptyStateStyle,
 } from "./style";
+
+// LCD in Action media is table/layer 1 in the shared content item (see
+// widgets/shared-code/content-config.ts).
+const LCD_MEDIA_LAYER_ID = 1;
 
 type MediaItem = {
   type: "image" | "video";
@@ -33,61 +40,66 @@ type MediaItem = {
   media?: string;
 };
 
-const mediaDatabaseLink = "https://files.angelobracero.com/lcd-page";
+// media_type is free text on the table ("image"/"video"); normalize it so
+// a stray typo or different casing doesn't just fall through to "video".
+function normalizeMediaType(rawValue: unknown): "image" | "video" {
+  return String(rawValue ?? "").trim().toLowerCase() === "image"
+    ? "image"
+    : "video";
+}
 
 function Widget(props: AllWidgetProps<any>) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const mediaItems: MediaItem[] = [
-    {
-      type: "video",
-      title: "LC Survey Fieldwork in Nueva Vizcaya",
-      date: "August 15, 2026",
-      media: `${mediaDatabaseLink}/20260815_130040.mp4`,
-    },
-    {
-      type: "video",
-      title: "Boundary Validation Walkthrough",
-      date: "August 15, 2026",
-      media: `${mediaDatabaseLink}/20260815_130307.mp4`,
-    },
-    {
-      type: "image",
-      title: "Technical Mapping Session",
-      date: "August 17, 2026",
-      media: `${mediaDatabaseLink}/20260817_102958.jpg`,
-    },
-    {
-      type: "video",
-      title: "Community Consultation Meeting",
-      date: "August 17, 2026",
-      media: `${mediaDatabaseLink}/20260817_104540.mp4`,
-    },
-    {
-      type: "video",
-      title: "LC Survey Team in the Field",
-      date: "August 17, 2026",
-      media: `${mediaDatabaseLink}/20260817_111149.mp4`,
-    },
-    {
-      type: "video",
-      title: "Ground Truthing Activity",
-      date: "August 20, 2026",
-      media: `${mediaDatabaseLink}/20260820_104835.mp4`,
-    },
-    {
-      type: "video",
-      title: "LCD Staff Conducting GPS Survey",
-      date: "August 22, 2026",
-      media: `${mediaDatabaseLink}/20260822_174359_073.mp4`,
-    },
-    {
-      type: "image",
-      title: "Overview of the LC Mapping Process",
-      date: "August 15, 2026",
-      media: `${mediaDatabaseLink}/DSC00927.jpg`,
-    },
-  ];
+  useEffect(() => {
+    const loadMediaItems = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const layer = new FeatureLayer({
+          portalItem: { id: CONTENT_ITEM_ID },
+          layerId: LCD_MEDIA_LAYER_ID,
+        });
+
+        await layer.load();
+
+        const query = layer.createQuery();
+
+        query.where = "1=1";
+        query.outFields = ["*"];
+        query.returnGeometry = false;
+
+        const result = await layer.queryFeatures(query);
+
+        const items: MediaItem[] = result.features.map((feature) => {
+          const attributes = feature.attributes;
+
+          return {
+            type: normalizeMediaType(getFieldValue(attributes, "media_type")),
+            title: getFieldValue(attributes, "title") || undefined,
+            date: formatDateLong(
+              getFieldValue(attributes, "media_date", "date"),
+            ),
+            media: getFieldValue(attributes, "media_url", "media") ?? "",
+          };
+        });
+
+        setMediaItems(items);
+      } catch (loadError) {
+        console.error("Failed to load LCD in Action media:", loadError);
+
+        setError("Failed to load LCD in Action media.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMediaItems();
+  }, []);
 
   useEffect(() => {
     if (selectedIndex === null) {
@@ -120,57 +132,55 @@ function Widget(props: AllWidgetProps<any>) {
           </p>
         </div>
 
-        <div css={gridStyle}>
-          {mediaItems.map((item, index) => {
-            const isPhoto = item.type === "image";
+        {loading ? (
+          <div css={emptyStateStyle}>Loading media...</div>
+        ) : error ? (
+          <div css={emptyStateStyle}>{error}</div>
+        ) : mediaItems.length === 0 ? (
+          <div css={emptyStateStyle}>No media has been added yet.</div>
+        ) : (
+          <div css={gridStyle}>
+            {mediaItems.map((item, index) => {
+              const isPhoto = item.type === "image";
 
-            return (
-              <div
-                key={`${item.title ?? "media"}-${index}`}
-                css={[cardStyle, isPhoto && clickableCardStyle]}
-                onClick={isPhoto ? () => setSelectedIndex(index) : undefined}
-              >
-                <div css={mediaWrapperStyle}>
-                  <span css={typeBadgeStyle}>
-                    {isPhoto ? "\u{1F4F7} Photo" : "\u{1F3AC} Video"}
-                  </span>
+              return (
+                <div
+                  key={`${item.title ?? "media"}-${index}`}
+                  css={[cardStyle, isPhoto && clickableCardStyle]}
+                  onClick={isPhoto ? () => setSelectedIndex(index) : undefined}
+                >
+                  <div css={mediaWrapperStyle}>
+                    <span css={typeBadgeStyle}>
+                      {isPhoto ? "\u{1F4F7} Photo" : "\u{1F3AC} Video"}
+                    </span>
 
-                  {isPhoto ? (
-                    <img
-                      css={imageStyle}
-                      src={item.media}
-                      alt={item.title || "LCD in Action photo"}
-                    />
-                  ) : (
-                    <div css={videoThumbStyle}>
-                      <video controls>
-                        <source src={item.media} type="video/mp4" />
-                      </video>
-                    </div>
-                  )}
+                    {isPhoto ? (
+                      <img
+                        css={imageStyle}
+                        src={item.media}
+                        alt={item.title || "LCD in Action photo"}
+                      />
+                    ) : (
+                      <div css={videoThumbStyle}>
+                        <video controls>
+                          <source src={item.media} type="video/mp4" />
+                        </video>
+                      </div>
+                    )}
+                  </div>
+                  <div css={captionStyle}>
+                    {item.title && <p css={captionTitleStyle}>{item.title}</p>}
+                    <div css={captionDateStyle}>{item.date}</div>
+                  </div>
                 </div>
-                <div css={captionStyle}>
-                  {item.title && (
-                    <p css={captionTitleStyle}>{item.title}</p>
-                  )}
-                  <div css={captionDateStyle}>{item.date}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {selectedItem && (
         <div css={overlayStyle} onClick={() => setSelectedIndex(null)}>
-          <button
-            css={overlayCloseButtonStyle}
-            aria-label="Close"
-            onClick={() => setSelectedIndex(null)}
-          >
-            &times;
-          </button>
-
           <img
             css={overlayImageStyle}
             src={selectedItem.media}

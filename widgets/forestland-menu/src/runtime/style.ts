@@ -1,26 +1,35 @@
 import { css } from "jimu-core";
 
-export const headerStyle = css({
+export const sidebarStyle = css({
   display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  flexDirection: 'column',
   height: '100%',
   width: '100%',
-  padding: '0 20px',
-  background: 'linear-gradient(90deg, #0b5e2e 0%, #0d7a3a 100%)',
-  borderBottom: '3px solid #ffcc00',
-  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+  background: '#fff',
+  borderRight: '1px solid #e2e2e2',
   boxSizing: 'border-box',
+  overflowY: 'auto',
+})
+
+export const logoContainerStyle = css({
+  display: 'flex',
+  justifyContent: 'center',
+  padding: '28px 16px',
+  borderBottom: '1px solid #eee',
+})
+
+export const logoImageStyle = css({
+  width: '88px',
+  height: '88px',
+  objectFit: 'contain',
 })
 
 export const navStyle = css({
   display: 'flex',
-  alignItems: 'center',
+  flexDirection: 'column',
   gap: '2px',
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
   margin: 0,
-  padding: 0,
+  padding: '16px 0',
 })
 
 export const navItemStyle = css({
@@ -31,24 +40,24 @@ export const navLinkStyle = css({
   background: 'none',
   border: 'none',
   font: 'inherit',
-  display: 'inline-block',
-  padding: '8px 14px',
-  borderRadius: '6px',
-  color: '#fff',
-  fontSize: '0.9rem',
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  padding: '12px 20px',
+  color: '#333',
+  fontSize: '0.92rem',
   fontWeight: 500,
   whiteSpace: 'nowrap',
   cursor: 'pointer',
   textDecoration: 'none',
-  transition: 'background-color 0.2s ease',
 
   '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: '#0b5e2e',
     color: '#fff',
   },
 
   '&:focus-visible': {
-    outline: '2px solid #ffcc00',
-    outlineOffset: '2px',
+    outline: '2px solid #0b5e2e',
+    outlineOffset: '-2px',
   },
 })

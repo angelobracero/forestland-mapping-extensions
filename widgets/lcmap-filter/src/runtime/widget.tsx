@@ -1,17 +1,19 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
 import { useEffect, useState } from "react";
-import { Paper, Select, Option, enqueueNotification } from "jimu-ui";
+import { enqueueNotification } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import FormTemplate from "@arcgis/core/form/FormTemplate";
 import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis";
-
+import { resolveFieldName } from "widgets/shared-code/field-utils";
+import { LC_MAP_CATALOG_ITEM_ID } from "widgets/shared-code/content-config";
+import { PHILIPPINE_REGIONS } from "widgets/shared-code/philippine-regions";
+import { setCurrentLcMapLayer } from "widgets/shared-code/local-layers-store";
 import {
-  filterPanelStyle,
-  titleStyle,
-  filterContainerStyle,
-  fieldStyle,
-  fieldLabelStyle,
-} from "./style";
+  type PendingCommentTarget,
+  subscribeToPendingCommentTarget,
+} from "widgets/shared-code/comment-navigation-store";
+import { ensureLayerDataSource } from "./map-utils";
+import { LayerFilterModal } from "./components/LayerFilterModal";
 
 type LcMap = {
   region: string;
@@ -22,7 +24,7 @@ type LcMap = {
 
 const catalogLayer = new FeatureLayer({
   portalItem: {
-    id: "7fb9324349ae4c01b4efcb06d09e79ce",
+    id: LC_MAP_CATALOG_ITEM_ID,
   },
 });
 
@@ -42,25 +44,16 @@ const DRAWING_TOOL_BY_GEOMETRY_TYPE: Record<string, string> = {
   polygon: "esriFeatureEditToolPolygon",
 };
 
-// The "Editor" field's exact casing on the comment layer isn't confirmed
-// (unlike region/province/lc_number), so look it up case- and
-// punctuation-insensitively instead of guessing.
-function resolveFieldName(
-  layer: FeatureLayer,
-  ...candidates: string[]
-): string | undefined {
-  const normalize = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const normalizedCandidates = candidates.map(normalize);
-
-  return layer.fields?.find((field) =>
-    normalizedCandidates.includes(normalize(field.name)),
-  )?.name;
-}
-
 function getCurrentUserDisplayName(): string | null {
   const user = getAppStore().getState().portalSelf?.user;
 
   return user?.fullName || user?.username || null;
+}
+
+function getCurrentUserEmail(): string | null {
+  const user = getAppStore().getState().portalSelf?.user;
+
+  return user?.email || null;
 }
 
 function Widget(props: AllWidgetProps<any>) {
@@ -73,18 +66,23 @@ function Widget(props: AllWidgetProps<any>) {
     null,
   );
   const [commentLayer, setCommentLayer] = useState<FeatureLayer | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [pendingTarget, setPendingTarget] = useState<PendingCommentTarget | null>(
+    null,
+  );
 
   // LOAD LC MAPS
   useEffect(() => {
     const loadCatalog = async () => {
       try {
-        console.log("Loading LC Map catalog...");
-
         await catalogLayer.load();
 
         const query = catalogLayer.createQuery();
 
-        query.where = "1=1";
+        // Excludes soft-removed entries (see content-admin's LcMapsSection)
+        // so a removed LC Map disappears from the public filter immediately,
+        // without touching the underlying published layer.
+        query.where = "removed IS NULL OR removed <> 1";
         query.outFields = ["region", "province", "lc_number", "item_id"];
         query.returnGeometry = false;
 
@@ -96,8 +94,6 @@ function Widget(props: AllWidgetProps<any>) {
           lc_number: feature.attributes.lc_number,
           item_id: feature.attributes.item_id,
         }));
-
-        console.log("LC Map Catalog:", maps);
 
         setLcMaps(maps);
       } catch (error) {
@@ -112,7 +108,11 @@ function Widget(props: AllWidgetProps<any>) {
   // REGIONS
   // ==========================================================
 
-  const regions = [...new Set(lcMaps.map((map) => map.region))];
+  // Fixed, canonically-ordered list rather than deriving from the catalog's
+  // own row order -- Province/LC Number below stay data-driven since not
+  // every province/LC map exists yet, but every region is always a valid
+  // choice regardless of whether it has an LC map published so far.
+  const regions = PHILIPPINE_REGIONS;
 
   const provinces = [
     ...new Set(
@@ -133,127 +133,6 @@ function Widget(props: AllWidgetProps<any>) {
     ),
   ];
 
-  // ==========================================================
-  // EXPERIENCE BUILDER DATA SOURCE
-  // ==========================================================
-
-  const ensureLayerDataSource = async (layer: FeatureLayer) => {
-    if (!jimuMapView) {
-      console.warn(
-        "Cannot create data source because JimuMapView is unavailable.",
-      );
-
-      return;
-    }
-
-    try {
-      console.log("Looking for JimuLayerView:", layer.title);
-
-      let jimuLayerView = jimuMapView.getJimuLayerViewByAPILayer(layer);
-
-      if (jimuLayerView) {
-        console.log("JimuLayerView already exists:", layer.title);
-      }
-
-      if (!jimuLayerView) {
-        console.log("JimuLayerView not ready yet. Waiting...");
-
-        await new Promise<void>((resolve) => {
-          let finished = false;
-
-          const listener = (createdLayerView: any) => {
-            if (createdLayerView?.layer === layer) {
-              console.log("JimuLayerView CREATED:", layer.title);
-
-              jimuLayerView = createdLayerView;
-
-              if (!finished) {
-                finished = true;
-
-                jimuMapView.removeJimuLayerViewCreatedListener(listener);
-
-                resolve();
-              }
-            }
-          };
-
-          jimuMapView.addJimuLayerViewCreatedListener(listener);
-
-          // --------------------------------------------------
-          // Safety timeout
-          // --------------------------------------------------
-
-          setTimeout(() => {
-            if (!finished) {
-              finished = true;
-
-              jimuMapView.removeJimuLayerViewCreatedListener(listener);
-
-              resolve();
-            }
-          }, 10000);
-        });
-      }
-
-      // ------------------------------------------------------
-      // THIRD: check one more time
-      // ------------------------------------------------------
-
-      if (!jimuLayerView) {
-        jimuLayerView = jimuMapView.getJimuLayerViewByAPILayer(layer);
-      }
-
-      if (!jimuLayerView) {
-        console.warn("JimuLayerView could not be created:", layer.title);
-
-        return;
-      }
-
-      console.log("JimuLayerView found:", jimuLayerView);
-      console.log("JimuLayerView ID:", jimuLayerView.id);
-      console.log("Layer Data Source ID:", jimuLayerView.layerDataSourceId);
-      console.log("From Runtime:", jimuLayerView.fromRuntime);
-
-      // ------------------------------------------------------
-      // FOURTH: CREATE EXPERIENCE BUILDER DATA SOURCE
-      // ------------------------------------------------------
-
-      let dataSource = jimuLayerView.getLayerDataSource();
-
-      if (dataSource) {
-        console.log(
-          "Existing Experience Builder data source found:",
-          dataSource.id,
-        );
-      } else {
-        console.log("Creating Experience Builder data source...");
-
-        dataSource = await jimuLayerView.createLayerDataSource();
-
-        console.log("Experience Builder data source CREATED:", dataSource?.id);
-      }
-
-      if (!dataSource) {
-        console.warn("No data source was created for:", layer.title);
-
-        return;
-      }
-
-      console.log(
-        "Layer is now registered with Experience Builder:",
-        layer.title,
-      );
-
-      console.log("Data Source ID:", dataSource.id);
-    } catch (error) {
-      console.error(
-        "Failed to create Experience Builder data source for:",
-        layer.title,
-        error,
-      );
-    }
-  };
-
   // Region, Province, and LC Number change handlers
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
@@ -268,10 +147,6 @@ function Widget(props: AllWidgetProps<any>) {
 
   const handleLcNumberChange = async (lc_number: string) => {
     setSelectedLcNumber(lc_number);
-    console.log("================================");
-    console.log("Region selected:", selectedRegion);
-    console.log("Province selected:", selectedProvince);
-    console.log("LC Number selected:", lc_number);
 
     if (!jimuMapView?.view?.map) {
       console.error("JimuMapView is not available.");
@@ -299,13 +174,8 @@ function Widget(props: AllWidgetProps<any>) {
       return;
     }
 
-    console.log("Selected LC Map:", selectedMap);
-    console.log("LC Map Item ID:", selectedMap.item_id);
-
     try {
       if (currentLcLayer) {
-        console.log("Removing previous LC map:", currentLcLayer.title);
-
         map.remove(currentLcLayer);
 
         setCurrentLcLayer(null);
@@ -332,21 +202,24 @@ function Widget(props: AllWidgetProps<any>) {
 
       // Load map
       await lcLayer.load();
-      console.log("LC Map loaded:", lcLayer.title);
 
       // Add lc map to the map
       map.add(lcLayer);
       setCurrentLcLayer(lcLayer);
-      console.log("LC Map added:", lcLayer.title);
+
+      // Let the local-layers-list widget show this layer too (zoom only --
+      // it's the official layer, not something a visitor added themselves).
+      setCurrentLcMapLayer({
+        label: `${selectedRegion} · ${selectedProvince} · ${lc_number}`,
+        layer: lcLayer,
+      });
 
       // Register LC Map with Experience Builder
-      await ensureLayerDataSource(lcLayer);
+      await ensureLayerDataSource(lcLayer, jimuMapView);
 
       // Zoom to LC Map extent
       if (lcLayer.fullExtent) {
-        await jimuMapView.view.goTo(lcLayer.fullExtent.expand(1.05));
-
-        console.log("Zoomed to LC Map.");
+        await jimuMapView.view.goTo(lcLayer.fullExtent.expand(1.15));
       }
 
       // ------------------------------------------------------
@@ -362,8 +235,6 @@ function Widget(props: AllWidgetProps<any>) {
       // ------------------------------------------------------
 
       if (commentLayer) {
-        console.log("Removing previous comment layer:", commentLayer.title);
-
         map.remove(commentLayer);
 
         setCommentLayer(null);
@@ -410,7 +281,6 @@ function Widget(props: AllWidgetProps<any>) {
       });
 
       await newCommentLayer.load();
-      console.log("Comment layer loaded:", newCommentLayer.title);
 
       const missingFields = [
         REGION_FIELD,
@@ -443,6 +313,19 @@ function Widget(props: AllWidgetProps<any>) {
           );
         }
 
+        // Email is pre-filled the same way as Editor, but stays editable
+        // (not added to readOnlyFieldNames below) in case the reviewer
+        // wants to submit a different contact email than their account's.
+        const emailFieldName = resolveFieldName(newCommentLayer, "email");
+
+        if (emailFieldName) {
+          defaultAttributes[emailFieldName] = getCurrentUserEmail();
+        } else {
+          console.warn(
+            "Comment layer has no recognizable 'email' field; skipping auto-populated email default.",
+          );
+        }
+
         newCommentLayer.templates = [
           {
             name: newCommentLayer.title || "Comment",
@@ -454,20 +337,10 @@ function Widget(props: AllWidgetProps<any>) {
           },
         ];
 
-        console.log(
-          "Comment layer default attributes set:",
-          defaultAttributes,
-        );
-
         // Only show comments that belong to the currently selected LC map.
         const escapeValue = (value: string) => value.replace(/'/g, "''");
 
         newCommentLayer.definitionExpression = `${REGION_FIELD} = '${escapeValue(selectedRegion)}' AND ${PROVINCE_FIELD} = '${escapeValue(selectedProvince)}' AND ${LC_NUMBER_FIELD} = '${escapeValue(lc_number)}'`;
-
-        console.log(
-          "Comment layer definition expression:",
-          newCommentLayer.definitionExpression,
-        );
       }
 
       // ------------------------------------------------------
@@ -533,13 +406,12 @@ function Widget(props: AllWidgetProps<any>) {
       // Add comment layer
       map.add(newCommentLayer);
       setCommentLayer(newCommentLayer);
-      console.log("Comment layer added.");
 
       // Make sure comments are visible
       newCommentLayer.visible = true;
 
       // Register Comment Layer with Experience Builder
-      await ensureLayerDataSource(newCommentLayer);
+      await ensureLayerDataSource(newCommentLayer, jimuMapView);
 
       // 11. Keep comments above LC Map in the layer list
       const commentIndex = map.layers.indexOf(newCommentLayer);
@@ -548,27 +420,97 @@ function Widget(props: AllWidgetProps<any>) {
         map.reorder(newCommentLayer, map.layers.length - 1);
       }
 
-      // Check
-      console.log("");
-      console.log("================================");
-      console.log("LC NUMBER LOAD COMPLETE");
-      console.log("LC Number:", lc_number);
-      console.log("LC Map:", lcLayer.title);
-      console.log("Comments:", newCommentLayer.title);
-      console.log("================================");
-      console.log("");
+      // Arrived here via a feedback comment's "View on Map" button -- zoom
+      // in on that specific comment (overriding the wider LC-map-extent
+      // zoom above) and open its popup, instead of just leaving the whole
+      // LC map in view.
+      if (pendingTarget?.objectId) {
+        try {
+          const targetQuery = newCommentLayer.createQuery();
+
+          targetQuery.objectIds = [pendingTarget.objectId];
+          targetQuery.outFields = ["*"];
+          targetQuery.returnGeometry = true;
+
+          const targetResult = await newCommentLayer.queryFeatures(targetQuery);
+          const targetFeature = targetResult.features[0];
+
+          if (targetFeature?.geometry) {
+            const geometry = targetFeature.geometry;
+
+            // Deliberately doesn't also call view.popup.open() here -- on
+            // this page's Map widget, opening the popup this way triggered
+            // an "arcgis-popup component has already been destroyed" crash
+            // during a later page navigation. The zoom below is what was
+            // actually asked for; the popup can still be opened by clicking
+            // the comment on the map afterward.
+            if (geometry.type === "point") {
+              await jimuMapView.view.goTo({ target: geometry, zoom: 16 });
+            } else if (geometry.extent) {
+              await jimuMapView.view.goTo(geometry.extent.expand(1.3));
+            } else {
+              await jimuMapView.view.goTo(geometry);
+            }
+          } else {
+            console.warn("Could not find the linked comment on the map.");
+          }
+        } catch (zoomError) {
+          console.error("Failed to zoom to the linked comment:", zoomError);
+        }
+      }
+
+      // Filter succeeded end-to-end -- close the popup so the map is
+      // immediately visible. Left open on failure (see catch below) so
+      // the user can see what happened and try again.
+      setIsFilterOpen(false);
     } catch (error) {
       console.error("FAILED TO LOAD LC MAP OR COMMENTS:", error);
     }
   };
 
   // ==========================================================
+  // "VIEW ON MAP" FROM A FEEDBACK COMMENT
+  // ==========================================================
+
+  // view-feedbacks' "View on Map" button leaves a pending target here (see
+  // widgets/shared-code/comment-navigation-store) right before navigating
+  // to this page. Subscribing (rather than a one-time mount check) handles
+  // both cases: this widget already being mounted when the button is
+  // clicked (Experience Builder may keep pages mounted across navigation),
+  // or mounting fresh afterward.
+  useEffect(
+    () =>
+      subscribeToPendingCommentTarget((target) => {
+        setPendingTarget(target);
+        setSelectedRegion(target.region);
+        setSelectedProvince(target.province);
+      }),
+    [],
+  );
+
+  // Once the pending target's region/province have actually landed in state
+  // (a separate render from the effect above, so handleLcNumberChange below
+  // closes over the right values) and the catalog/map are ready, select the
+  // LC Number the same way a real dropdown click would -- handleLcNumberChange
+  // itself then zooms to this specific comment once its layer loads (see the
+  // pendingTarget.objectId check further up in that function).
+  useEffect(() => {
+    if (!pendingTarget) return;
+    if (!jimuMapView) return;
+    if (lcMaps.length === 0) return;
+    if (selectedRegion !== pendingTarget.region) return;
+    if (selectedProvince !== pendingTarget.province) return;
+
+    handleLcNumberChange(pendingTarget.lcNumber);
+    setPendingTarget(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTarget, jimuMapView, lcMaps, selectedRegion, selectedProvince]);
+
+  // ==========================================================
   // MAP CONNECTION
   // ==========================================================
 
   const handleActiveViewChange = (mapView: JimuMapView) => {
-    console.log("JimuMapView connected:", mapView);
-
     setJimuMapView(mapView);
   };
 
@@ -588,82 +530,23 @@ function Widget(props: AllWidgetProps<any>) {
       />
 
       {/* =====================================================
-          FILTER
+          FILTER: a button that opens the filter as a popup
           ===================================================== */}
 
-      <Paper css={filterPanelStyle} className="jimu-widget" component="div">
-        <div css={titleStyle}>Filter</div>
-
-        <div css={filterContainerStyle}>
-          {/* =================================================
-              REGION
-              ================================================= */}
-
-          <div css={fieldStyle}>
-            <label css={fieldLabelStyle}>Region</label>
-
-            <Select
-              value={selectedRegion}
-              onChange={(e) => {
-                handleRegionChange(e.target.value);
-              }}
-              placeholder="Select a Region"
-            >
-              {regions.map((region) => (
-                <Option key={region} value={region}>
-                  {region}
-                </Option>
-              ))}
-            </Select>
-          </div>
-
-          {/* =================================================
-              PROVINCE
-              ================================================= */}
-
-          <div css={fieldStyle}>
-            <label css={fieldLabelStyle}>Province</label>
-
-            <Select
-              value={selectedProvince}
-              disabled={!selectedRegion}
-              onChange={(e) => {
-                handleProvinceChange(e.target.value);
-              }}
-              placeholder="Select a Province"
-            >
-              {provinces.map((province) => (
-                <Option key={province} value={province}>
-                  {province}
-                </Option>
-              ))}
-            </Select>
-          </div>
-
-          {/* =================================================
-              LC MAP NUMBER
-              ================================================= */}
-
-          <div css={fieldStyle}>
-            <label css={fieldLabelStyle}>LC Map Number</label>
-
-            <Select
-              value={selectedLcNumber}
-              disabled={!selectedRegion}
-              onChange={(e) => {
-                handleLcNumberChange(e.target.value);
-              }}
-              placeholder="Select a LC Map Number"
-            >
-              {lcMapNumbers.map((number) => (
-                <Option key={number} value={number}>
-                  {number}
-                </Option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      </Paper>
+      <LayerFilterModal
+        isOpen={isFilterOpen}
+        onOpen={() => setIsFilterOpen(true)}
+        onClose={() => setIsFilterOpen(false)}
+        regions={regions}
+        provinces={provinces}
+        lcMapNumbers={lcMapNumbers}
+        selectedRegion={selectedRegion}
+        selectedProvince={selectedProvince}
+        selectedLcNumber={selectedLcNumber}
+        onRegionChange={handleRegionChange}
+        onProvinceChange={handleProvinceChange}
+        onLcNumberChange={handleLcNumberChange}
+      />
     </>
   );
 }

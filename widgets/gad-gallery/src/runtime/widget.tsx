@@ -1,6 +1,9 @@
 import { type AllWidgetProps } from "jimu-core";
 import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import { getFieldValue, formatDateLong } from "widgets/shared-code/field-utils";
+import { CONTENT_ITEM_ID } from "widgets/shared-code/content-config";
 
 import {
   containerStyle,
@@ -20,10 +23,12 @@ import {
   overlayCaptionStyle,
   overlayCaptionTitleStyle,
   overlayCaptionDateStyle,
-  overlayCloseButtonStyle,
+  emptyStateStyle,
 } from "./style";
 
-const mediaDatabaseLink = "https://files.angelobracero.com/gad-page";
+// GAD activities is table/layer 0 in the shared content item (see
+// widgets/shared-code/content-config.ts).
+const GAD_ACTIVITIES_LAYER_ID = 0;
 
 type Activity = {
   title?: string;
@@ -33,49 +38,55 @@ type Activity = {
 
 function Widget(props: AllWidgetProps<any>) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const baseActivities: Activity[] = [
-    {
-      title: "Gender Sensitivity Training for LCD Personnel",
-      date: "August 24, 2026",
-      image: `${mediaDatabaseLink}/1.jpg`,
-    },
-    {
-      title: "Women in Geospatial Mapping Workshop",
-      date: "August 24, 2026",
-      image: `${mediaDatabaseLink}/2.jpg`,
-    },
-    {
-      title: "GAD Orientation for New Employees",
-      date: "August 24, 2026",
-      image: `${mediaDatabaseLink}/3.png`,
-    },
-    {
-      title: "International Women's Month Celebration",
-      date: "June 17, 2026",
-      image: `${mediaDatabaseLink}/4.jpg`,
-    },
-    {
-      title: "Community Outreach and Education Program",
-      date: "August 11, 2026",
-      image: `${mediaDatabaseLink}/5.jpg`,
-    },
-    {
-      title: "LCD GAD Planning Workshop",
-      date: "August 12, 2026",
-      image: `${mediaDatabaseLink}/6.jpg`,
-    },
-    {
-      title: "LCD GAD Planning Workshop",
-      date: "August 12, 2026",
-      image: `${mediaDatabaseLink}/7.jpg`,
-    },
-    {
-      title: "LCD GAD Planning Workshop",
-      date: "August 12, 2026",
-      image: `${mediaDatabaseLink}/8.jpg`,
-    },
-  ];
+  useEffect(() => {
+    const loadActivities = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const layer = new FeatureLayer({
+          portalItem: { id: CONTENT_ITEM_ID },
+          layerId: GAD_ACTIVITIES_LAYER_ID,
+        });
+
+        await layer.load();
+
+        const query = layer.createQuery();
+
+        query.where = "1=1";
+        query.outFields = ["*"];
+        query.returnGeometry = false;
+
+        const result = await layer.queryFeatures(query);
+
+        const items: Activity[] = result.features.map((feature) => {
+          const attributes = feature.attributes;
+
+          return {
+            title: getFieldValue(attributes, "title") || undefined,
+            date: formatDateLong(
+              getFieldValue(attributes, "activity_date", "date"),
+            ),
+            image: getFieldValue(attributes, "image_url", "image") ?? "",
+          };
+        });
+
+        setActivities(items);
+      } catch (loadError) {
+        console.error("Failed to load GAD activities:", loadError);
+
+        setError("Failed to load GAD activities.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivities();
+  }, []);
 
   useEffect(() => {
     if (selectedIndex === null) {
@@ -94,7 +105,7 @@ function Widget(props: AllWidgetProps<any>) {
   }, [selectedIndex]);
 
   const selectedActivity =
-    selectedIndex !== null ? baseActivities[selectedIndex] : null;
+    selectedIndex !== null ? activities[selectedIndex] : null;
 
   return (
     <Paper className="jimu-widget" component="main">
@@ -109,41 +120,41 @@ function Widget(props: AllWidgetProps<any>) {
           </p>
         </div>
 
-        <div css={gridStyle}>
-          {baseActivities.map((activity, index) => (
-            <div
-              key={`${activity.title ?? "activity"}-${index}`}
-              css={cardStyle}
-              onClick={() => setSelectedIndex(index)}
-            >
-              <div css={imageWrapperStyle}>
-                <img
-                  css={imageStyle}
-                  src={activity.image}
-                  alt={activity.title || "LCD GAD activity"}
-                />
+        {loading ? (
+          <div css={emptyStateStyle}>Loading activities...</div>
+        ) : error ? (
+          <div css={emptyStateStyle}>{error}</div>
+        ) : activities.length === 0 ? (
+          <div css={emptyStateStyle}>No activities have been added yet.</div>
+        ) : (
+          <div css={gridStyle}>
+            {activities.map((activity, index) => (
+              <div
+                key={`${activity.title ?? "activity"}-${index}`}
+                css={cardStyle}
+                onClick={() => setSelectedIndex(index)}
+              >
+                <div css={imageWrapperStyle}>
+                  <img
+                    css={imageStyle}
+                    src={activity.image}
+                    alt={activity.title || "LCD GAD activity"}
+                  />
+                </div>
+                <div css={captionStyle}>
+                  {activity.title && (
+                    <p css={captionTitleStyle}>{activity.title}</p>
+                  )}
+                  <div css={captionDateStyle}>{activity.date}</div>
+                </div>
               </div>
-              <div css={captionStyle}>
-                {activity.title && (
-                  <p css={captionTitleStyle}>{activity.title}</p>
-                )}
-                <div css={captionDateStyle}>{activity.date}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedActivity && (
         <div css={overlayStyle} onClick={() => setSelectedIndex(null)}>
-          <button
-            css={overlayCloseButtonStyle}
-            aria-label="Close"
-            onClick={() => setSelectedIndex(null)}
-          >
-            &times;
-          </button>
-
           <img
             css={overlayImageStyle}
             src={selectedActivity.image}

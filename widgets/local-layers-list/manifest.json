@@ -1,0 +1,23 @@
+{
+  "name": "local-layers-list",
+  "label": "Local Layers List",
+  "type": "widget",
+  "version": "1.21.0",
+  "exbVersion": "1.21.0",
+  "author": "Angelo Bracero",
+  "description": "Lists the shapefiles a visitor has added to the map via the Shapefile Preview widget, letting them zoom to or remove each one. Placed separately so it can go anywhere on the page relative to that button.",
+  "copyright": "",
+  "license": "MIT",
+  "properties": {},
+  "useMapWidgetIds": true,
+  "translatedLocales": [
+    "en"
+  ],
+  "dependency": [
+    "jimu-arcgis"
+  ],
+  "defaultSize": {
+    "width": 300,
+    "height": 200
+  }
+}
