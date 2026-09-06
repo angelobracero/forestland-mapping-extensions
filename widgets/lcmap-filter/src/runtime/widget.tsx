@@ -1,5 +1,5 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { enqueueNotification } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import FormTemplate from "@arcgis/core/form/FormTemplate";
@@ -70,6 +70,10 @@ function Widget(props: AllWidgetProps<any>) {
   const [pendingTarget, setPendingTarget] = useState<PendingCommentTarget | null>(
     null,
   );
+  // Handle for the map highlight placed on a comment linked in from
+  // view-feedbacks (see pendingTarget.objectId below) -- kept in a ref so
+  // it can be cleared before adding a new one.
+  const commentHighlightHandleRef = useRef<{ remove: () => void } | null>(null);
 
   // LOAD LC MAPS
   useEffect(() => {
@@ -147,6 +151,12 @@ function Widget(props: AllWidgetProps<any>) {
 
   const handleLcNumberChange = async (lc_number: string) => {
     setSelectedLcNumber(lc_number);
+
+    // Close the filter popup right away so the map is immediately visible
+    // instead of sitting behind it while the layer loads -- there's no
+    // visible error state to preserve below anyway (failures only go to
+    // the console), so there's no reason to keep it open that long.
+    setIsFilterOpen(false);
 
     if (!jimuMapView?.view?.map) {
       console.error("JimuMapView is not available.");
@@ -239,6 +249,9 @@ function Widget(props: AllWidgetProps<any>) {
 
         setCommentLayer(null);
       }
+
+      commentHighlightHandleRef.current?.remove();
+      commentHighlightHandleRef.current = null;
 
       const newCommentLayer = new FeatureLayer({
         portalItem: {
@@ -438,12 +451,12 @@ function Widget(props: AllWidgetProps<any>) {
           if (targetFeature?.geometry) {
             const geometry = targetFeature.geometry;
 
-            // Deliberately doesn't also call view.popup.open() here -- on
-            // this page's Map widget, opening the popup this way triggered
-            // an "arcgis-popup component has already been destroyed" crash
-            // during a later page navigation. The zoom below is what was
-            // actually asked for; the popup can still be opened by clicking
-            // the comment on the map afterward.
+            // Deliberately doesn't call view.popup.open() here -- on this
+            // page's Map widget, opening the popup this way triggered an
+            // "arcgis-popup component has already been destroyed" crash
+            // during a later page navigation. A layer highlight achieves
+            // the same "this one is selected" effect without touching the
+            // Popup UI component at all, so it doesn't have that problem.
             if (geometry.type === "point") {
               await jimuMapView.view.goTo({ target: geometry, zoom: 16 });
             } else if (geometry.extent) {
@@ -451,6 +464,13 @@ function Widget(props: AllWidgetProps<any>) {
             } else {
               await jimuMapView.view.goTo(geometry);
             }
+
+            const commentLayerView =
+              await jimuMapView.view.whenLayerView(newCommentLayer);
+
+            commentHighlightHandleRef.current = commentLayerView.highlight(
+              pendingTarget.objectId,
+            );
           } else {
             console.warn("Could not find the linked comment on the map.");
           }
@@ -459,10 +479,6 @@ function Widget(props: AllWidgetProps<any>) {
         }
       }
 
-      // Filter succeeded end-to-end -- close the popup so the map is
-      // immediately visible. Left open on failure (see catch below) so
-      // the user can see what happened and try again.
-      setIsFilterOpen(false);
     } catch (error) {
       console.error("FAILED TO LOAD LC MAP OR COMMENTS:", error);
     }
@@ -505,6 +521,21 @@ function Widget(props: AllWidgetProps<any>) {
     setPendingTarget(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTarget, jimuMapView, lcMaps, selectedRegion, selectedProvince]);
+
+  // Clears the "linked from a feedback comment" highlight (see
+  // handleLcNumberChange's pendingTarget.objectId block above) as soon as
+  // the user clicks anywhere else on the map, so it behaves like a normal
+  // selection instead of a marker that's stuck there permanently.
+  useEffect(() => {
+    if (!jimuMapView) return;
+
+    const clickHandle = jimuMapView.view.on("click", () => {
+      commentHighlightHandleRef.current?.remove();
+      commentHighlightHandleRef.current = null;
+    });
+
+    return () => clickHandle.remove();
+  }, [jimuMapView]);
 
   // ==========================================================
   // MAP CONNECTION

@@ -6,7 +6,9 @@ import { checkIsContentAdmin } from "widgets/shared-code/admin-auth";
 import {
   sidebarStyle,
   logoContainerStyle,
+  logoButtonStyle,
   logoImageStyle,
+  logoTitleStyle,
   navStyle,
   navItemStyle,
   navLinkStyle,
@@ -74,7 +76,16 @@ function Widget(props: AllWidgetProps<any>) {
   return (
     <Paper css={sidebarStyle} className="jimu-widget" component="nav">
       <div css={logoContainerStyle}>
-        <img css={logoImageStyle} src={namriaLogo} alt="NAMRIA logo" />
+        <button
+          type="button"
+          css={logoButtonStyle}
+          onClick={() => goToPage("Home")}
+        >
+          <img css={logoImageStyle} src={namriaLogo} alt="NAMRIA logo" />
+        </button>
+        <span css={logoTitleStyle}>
+          Forestland Evaluation &amp; Mapping Project
+        </span>
       </div>
 
       <ul css={navStyle}>

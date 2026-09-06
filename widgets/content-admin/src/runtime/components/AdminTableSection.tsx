@@ -38,6 +38,9 @@ import {
   uploadRowStyle,
   uploadButtonStyle,
   currentValueStyle,
+  modalDialogStyle,
+  MODAL_BELOW_HEADER_CLASS,
+  modalBelowHeaderCss,
 } from "../style";
 import { type FieldDef, type TableDef, type Row, toDateInputValue, displayValue } from "../tables";
 import {
@@ -467,7 +470,15 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
       )}
 
       {/* ADD / EDIT FORM */}
-      <Modal isOpen={isFormOpen} toggle={closeForm} centered>
+      <style>{modalBelowHeaderCss}</style>
+
+      <Modal
+        isOpen={isFormOpen}
+        toggle={closeForm}
+        centered
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
+      >
         <ModalHeader toggle={closeForm}>
           {editingRow ? `Edit ${tableDef.label} entry` : `Add ${tableDef.label} entry`}
         </ModalHeader>
@@ -568,7 +579,13 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
       </Modal>
 
       {/* DELETE CONFIRMATION */}
-      <Modal isOpen={pendingDeleteRow !== null} toggle={cancelDelete} centered>
+      <Modal
+        isOpen={pendingDeleteRow !== null}
+        toggle={cancelDelete}
+        centered
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
+      >
         <ModalHeader toggle={cancelDelete}>Delete entry</ModalHeader>
         <ModalBody>
           <p css={confirmDialogBodyStyle}>

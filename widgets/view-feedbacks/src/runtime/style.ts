@@ -394,3 +394,27 @@ export const confirmDialogBodyStyle = css({
   color: '#333',
   lineHeight: 1.6,
 })
+
+// Caps every popup to the space actually left below the app's 40px sticky
+// header -- without this, a modal (which is centered against the full
+// viewport height) can grow tall enough to sit behind/under the header.
+export const modalDialogStyle = css({
+  maxHeight: 'calc(100dvh - 40px)',
+  overflowY: 'auto',
+})
+
+// jimu-ui's Modal only exposes its outer full-viewport wrapper (the one
+// that needs repositioning below the header) through the plain string
+// `modalClassName` prop, not the `css` prop -- so this pairs a real class
+// name with a small stylesheet injected via a <style> tag next to the
+// Modal, the same way the image lightbox overlays (gad-gallery,
+// guides-and-tutorials) are positioned to start below the 40px header
+// instead of covering it.
+export const MODAL_BELOW_HEADER_CLASS = 'fem-modal-below-header'
+
+export const modalBelowHeaderCss = `
+  .${MODAL_BELOW_HEADER_CLASS} {
+    top: 40px !important;
+    height: calc(100dvh - 40px) !important;
+  }
+`

@@ -13,15 +13,37 @@ export const sidebarStyle = css({
 
 export const logoContainerStyle = css({
   display: 'flex',
-  justifyContent: 'center',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '10px',
   padding: '28px 16px',
   borderBottom: '1px solid #eee',
 })
 
+export const logoButtonStyle = css({
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+
+  '&:focus-visible': {
+    outline: '2px solid #0b5e2e',
+    outlineOffset: '2px',
+  },
+})
+
 export const logoImageStyle = css({
-  width: '88px',
-  height: '88px',
+  width: '120px',
+  height: '120px',
   objectFit: 'contain',
+})
+
+export const logoTitleStyle = css({
+  fontSize: '1.15rem',
+  fontWeight: 700,
+  color: '#0b5e2e',
+  textAlign: 'center',
+  lineHeight: 1.35,
 })
 
 export const navStyle = css({

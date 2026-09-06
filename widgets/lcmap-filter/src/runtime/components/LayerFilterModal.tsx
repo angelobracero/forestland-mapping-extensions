@@ -6,6 +6,9 @@ import {
   filterContainerStyle,
   fieldStyle,
   fieldLabelStyle,
+  modalDialogStyle,
+  MODAL_BELOW_HEADER_CLASS,
+  modalBelowHeaderCss,
 } from "../style";
 
 type LayerFilterModalProps = {
@@ -57,7 +60,15 @@ export function LayerFilterModal({
         )}
       </button>
 
-      <Modal isOpen={isOpen} toggle={onClose} centered>
+      <style>{modalBelowHeaderCss}</style>
+
+      <Modal
+        isOpen={isOpen}
+        toggle={onClose}
+        centered
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
+      >
         <ModalHeader toggle={onClose}>Choose a Layer</ModalHeader>
         <ModalBody>
           <div css={filterContainerStyle}>

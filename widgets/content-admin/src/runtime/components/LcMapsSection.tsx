@@ -38,6 +38,9 @@ import {
   uploadRowStyle,
   uploadButtonStyle,
   currentValueStyle,
+  modalDialogStyle,
+  MODAL_BELOW_HEADER_CLASS,
+  modalBelowHeaderCss,
 } from "../style";
 import { uploadAndPublishShapefile, type PublishStage } from "../lc-map-publish";
 
@@ -439,7 +442,15 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       )}
 
       {/* ADD FORM */}
-      <Modal isOpen={isFormOpen} toggle={closeForm} centered>
+      <style>{modalBelowHeaderCss}</style>
+
+      <Modal
+        isOpen={isFormOpen}
+        toggle={closeForm}
+        centered
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
+      >
         <ModalHeader toggle={closeForm}>Publish a new LC Map</ModalHeader>
         <ModalBody>
           <div css={formFieldStyle}>
@@ -534,7 +545,13 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       </Modal>
 
       {/* DELETE CONFIRMATION */}
-      <Modal isOpen={pendingDeleteRow !== null} toggle={cancelDelete} centered>
+      <Modal
+        isOpen={pendingDeleteRow !== null}
+        toggle={cancelDelete}
+        centered
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
+      >
         <ModalHeader toggle={cancelDelete}>Remove LC Map</ModalHeader>
         <ModalBody>
           <p css={confirmDialogBodyStyle}>

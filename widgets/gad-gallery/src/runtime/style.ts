@@ -103,14 +103,19 @@ export const captionDateStyle = css({
 
 export const overlayStyle = css({
   position: 'fixed',
-  inset: 0,
+  // Starts below the app's 40px sticky header instead of covering the
+  // full viewport (inset: 0 would draw over the header), so the header
+  // stays visible and the image below has an accurate amount of room.
+  top: '40px',
+  right: 0,
+  bottom: 0,
+  left: 0,
   backgroundColor: 'rgba(0, 0, 0, 0.85)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '40px 24px',
-  paddingBlockStart: 'calc(40px + 90px)',
+  padding: '24px',
   boxSizing: 'border-box',
   zIndex: 10000,
   cursor: 'zoom-out',
@@ -124,7 +129,10 @@ export const overlayStyle = css({
 
 export const overlayImageStyle = css({
   maxWidth: '90vw',
-  maxHeight: '78vh',
+  // Leaves room below the image for its caption -- the overlay's own box
+  // is already only (100dvh - 40px) tall (see overlayStyle above), so
+  // this only needs to subtract the overlay's padding and caption height.
+  maxHeight: 'calc(100dvh - 40px - 160px)',
   objectFit: 'contain',
   borderRadius: '8px',
   boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',

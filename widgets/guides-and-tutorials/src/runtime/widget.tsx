@@ -13,6 +13,7 @@ import {
   sectionIntroStyle,
   featureGridStyle,
   featureCardStyle,
+  featureIconWrapStyle,
   featureIconStyle,
   featureTitleStyle,
   featureDescStyle,
@@ -359,18 +360,20 @@ function Widget(props: AllWidgetProps<any>) {
         </div>
 
         <section css={sectionStyle}>
-          <h3 css={sectionTitleStyle}>Introduction to the Web App</h3>
+          <h3 css={sectionTitleStyle}>What You Can Do on This Site</h3>
           <p css={sectionIntroStyle}>
-            This site lets the public, LGUs, and partner agencies view Proposed
-            Land Classification Maps from NAMRIA's Forestland Evaluation and
-            Mapping Project, and submit feedback on them before endorsement.
-            Here's what you'll find around the site:
+            The public, LGUs, and partner agencies can use this site to review
+            Proposed Land Classification Maps from NAMRIA's Forestland
+            Evaluation and Mapping Project and submit feedback before
+            endorsement. Here's an overview of what's available:
           </p>
 
           <div css={featureGridStyle}>
             {features.map((feature) => (
               <div key={feature.title} css={featureCardStyle}>
-                <span css={featureIconStyle}>{feature.icon}</span>
+                <span css={featureIconWrapStyle}>
+                  <span css={featureIconStyle}>{feature.icon}</span>
+                </span>
                 <p css={featureTitleStyle}>{feature.title}</p>
                 <p css={featureDescStyle}>{feature.description}</p>
               </div>

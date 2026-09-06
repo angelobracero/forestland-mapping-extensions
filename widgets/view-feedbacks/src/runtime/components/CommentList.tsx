@@ -26,6 +26,9 @@ import {
   commentDetailAttachmentsLabelStyle,
   attachmentListStyle,
   attachmentLinkStyle,
+  modalDialogStyle,
+  MODAL_BELOW_HEADER_CLASS,
+  modalBelowHeaderCss,
 } from "../style";
 
 // Must match the page label used in forestland-menu's own nav link for the
@@ -138,11 +141,15 @@ export function CommentList({
       </div>
 
       {/* Enlarged, easier-to-read view of whichever comment was clicked. */}
+      <style>{modalBelowHeaderCss}</style>
+
       <Modal
         isOpen={selectedComment !== null}
         toggle={() => setSelectedComment(null)}
         centered
         size="lg"
+        css={modalDialogStyle}
+        modalClassName={MODAL_BELOW_HEADER_CLASS}
       >
         {selectedComment && (
           <>
@@ -205,7 +212,10 @@ export function CommentList({
             <ModalFooter>
               <Button
                 type="primary"
-                onClick={() => goToMapForComment(selectedComment)}
+                onClick={() => {
+                  setSelectedComment(null);
+                  goToMapForComment(selectedComment);
+                }}
               >
                 View on Map
               </Button>

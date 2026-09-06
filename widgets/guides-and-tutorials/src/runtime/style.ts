@@ -91,8 +91,19 @@ export const featureCardStyle = css({
   },
 })
 
+export const featureIconWrapStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '44px',
+  height: '44px',
+  borderRadius: '10px',
+  backgroundColor: 'rgba(11, 94, 46, 0.08)',
+})
+
 export const featureIconStyle = css({
-  fontSize: '1.8rem',
+  fontSize: '1.4rem',
+  lineHeight: 1,
 })
 
 export const featureTitleStyle = css({
@@ -228,13 +239,19 @@ export const videoElementStyle = css({
 // as gad-gallery/lcd-in-action's photo lightbox.
 export const imageOverlayStyle = css({
   position: 'fixed',
-  inset: 0,
+  // Starts below the app's 40px sticky header instead of covering the
+  // full viewport (inset: 0 would draw over the header), so the header
+  // stays visible and the image below has an accurate amount of room.
+  top: '40px',
+  right: 0,
+  bottom: 0,
+  left: 0,
   backgroundColor: 'rgba(0, 0, 0, 0.85)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '40px 24px',
+  padding: '24px',
   boxSizing: 'border-box',
   zIndex: 10000,
   cursor: 'zoom-out',
@@ -248,7 +265,10 @@ export const imageOverlayStyle = css({
 
 export const imageOverlayImageStyle = css({
   maxWidth: '90vw',
-  maxHeight: '78vh',
+  // Leaves room below the image for its caption -- the overlay's own box
+  // is already only (100dvh - 40px) tall (see imageOverlayStyle above),
+  // so this only needs to subtract the overlay's padding and caption height.
+  maxHeight: 'calc(100dvh - 40px - 160px)',
   objectFit: 'contain',
   borderRadius: '8px',
   boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
