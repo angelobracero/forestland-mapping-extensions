@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import {
   TextInput,
   TextArea,
@@ -24,6 +24,8 @@ import {
   emptyStateStyle,
   rowListStyle,
   rowItemStyle,
+  rowItemDraggingStyle,
+  dragHandleStyle,
   rowInfoStyle,
   rowTitleStyle,
   rowMetaStyle,
@@ -58,6 +60,10 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
   // timestamp) -- track which of our date fields are date-only so writes
   // send the format the field actually expects.
   const [dateOnlyByKey, setDateOnlyByKey] = useState<Record<string, boolean>>({});
+  // Resolved once in init() below, same as fieldNamesByKey -- null when
+  // this table has no sortFieldCandidates (Office Options/Admins), or when
+  // the field couldn't be found on the layer.
+  const [sortFieldName, setSortFieldName] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +76,17 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
   const [pendingDeleteRow, setPendingDeleteRow] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Index (into `rows`) of the row currently being dragged -- see
+  // handleDragStart/handleDrop below.
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [reordering, setReordering] = useState(false);
+
   const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
 
   const loadRows = async (
     activeLayer: FeatureLayer,
     fieldMap: Record<string, string>,
+    sortField: string | null,
   ) => {
     setLoading(true);
     setError(null);
@@ -85,6 +97,13 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
       query.where = "1=1";
       query.outFields = ["*"];
       query.returnGeometry = false;
+
+      // Rows with no sort_order yet (anything added before this table
+      // opted into reordering) come back last -- most portals put nulls
+      // last on an ascending sort by default, which is what we want here.
+      if (sortField) {
+        query.orderByFields = [`${sortField} ASC`];
+      }
 
       const result = await activeLayer.queryFeatures(query);
 
@@ -152,11 +171,16 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
           }
         });
 
+        const resolvedSortField = tableDef.sortFieldCandidates
+          ? resolveFieldName(newLayer, ...tableDef.sortFieldCandidates)
+          : undefined;
+
         setLayer(newLayer);
         setFieldNamesByKey(fieldMap);
         setDateOnlyByKey(dateOnlyMap);
+        setSortFieldName(resolvedSortField ?? null);
 
-        await loadRows(newLayer, fieldMap);
+        await loadRows(newLayer, fieldMap, resolvedSortField ?? null);
       } catch (loadError) {
         if (cancelled) return;
 
@@ -319,7 +343,7 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
       setIsFormOpen(false);
       setEditingRow(null);
 
-      await loadRows(layer, fieldNamesByKey);
+      await loadRows(layer, fieldNamesByKey, sortFieldName);
     } catch (saveError) {
       console.error(`Failed to save ${tableDef.label} entry:`, saveError);
 
@@ -386,7 +410,7 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
 
       setPendingDeleteRow(null);
 
-      await loadRows(layer, fieldNamesByKey);
+      await loadRows(layer, fieldNamesByKey, sortFieldName);
     } catch (deleteError) {
       console.error(`Failed to delete ${tableDef.label} entry:`, deleteError);
 
@@ -397,6 +421,96 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
       });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // ------------------------------------------------------
+  // Drag-to-reorder: only active when sortFieldName resolved (see init()
+  // above) -- Office Options/Admins have no sortFieldCandidates, so their
+  // rows stay plain and undraggable.
+  //
+  // Rows are reordered live as the drag passes over each one (like a
+  // typical sortable list), rather than only jumping into place on drop --
+  // handleDragOver below does the actual moving; handleDrop just prevents
+  // the browser's own default drop behavior. The write only happens once,
+  // in handleDragEnd, which fires whether or not the drag ended over a
+  // valid target -- by then `rows` already reflects wherever it was left,
+  // so every row's sort value is rewritten to its current index in one
+  // batch (not just the moved range), which also gives a legacy row with
+  // no sort_order yet a real value the first time anything near it moves.
+  // ------------------------------------------------------
+
+  const handleDragStart = (
+    event: DragEvent<HTMLSpanElement>,
+    index: number,
+  ) => {
+    setDraggedIndex(index);
+
+    // Drags a preview of the whole row instead of just this small handle --
+    // parentElement is the row <div>, since the handle renders as its
+    // direct child.
+    if (event.currentTarget.parentElement) {
+      event.dataTransfer.setDragImage(event.currentTarget.parentElement, 20, 20);
+    }
+  };
+
+  const handleDragOverRow = (event: DragEvent, targetIndex: number) => {
+    // Needed to mark this row as a valid drop target -- without it the
+    // browser rejects the drop outright.
+    event.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const reordered = [...rows];
+    const [movedRow] = reordered.splice(draggedIndex, 1);
+
+    reordered.splice(targetIndex, 0, movedRow);
+
+    setRows(reordered);
+    setDraggedIndex(targetIndex);
+  };
+
+  const handleDrop = (event: DragEvent) => {
+    event.preventDefault();
+  };
+
+  const handleDragEnd = async () => {
+    setDraggedIndex(null);
+
+    if (!layer || !sortFieldName) return;
+
+    setReordering(true);
+
+    try {
+      const result = await layer.applyEdits({
+        updateFeatures: rows.map((row, index) => ({
+          attributes: {
+            [layer.objectIdField]: row.objectId,
+            [sortFieldName]: index,
+          },
+        })),
+      });
+
+      const failed = result.updateFeatureResults?.find((r) => r.error);
+
+      if (failed?.error) {
+        throw failed.error;
+      }
+    } catch (reorderError) {
+      console.error(`Failed to save ${tableDef.label} order:`, reorderError);
+
+      enqueueNotification({
+        message: `Failed to save the new order -- reloading the list.`,
+        severity: "error",
+        placement: "bottom-left",
+      });
+
+      // The rows shown are now out of sync with what's actually saved --
+      // reload from the server rather than leave a misleading order on
+      // screen.
+      await loadRows(layer, fieldNamesByKey, sortFieldName);
+    } finally {
+      setReordering(false);
     }
   };
 
@@ -414,6 +528,8 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
         </button>
       </div>
 
+      {reordering && <span css={rowMetaStyle}>Saving order...</span>}
+
       {loading ? (
         <div css={emptyStateStyle}>Loading...</div>
       ) : error ? (
@@ -424,7 +540,7 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
         </div>
       ) : (
         <div css={rowListStyle}>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const titleFieldDef = tableDef.fields.find(
               (f) => f.key === titleFieldKey,
             );
@@ -442,7 +558,30 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
               .join(" · ");
 
             return (
-              <div key={row.objectId} css={rowItemStyle}>
+              <div
+                key={row.objectId}
+                css={[
+                  rowItemStyle,
+                  draggedIndex === index && rowItemDraggingStyle,
+                ]}
+                onDragOver={
+                  sortFieldName
+                    ? (event) => handleDragOverRow(event, index)
+                    : undefined
+                }
+                onDrop={sortFieldName ? handleDrop : undefined}
+              >
+                {sortFieldName && (
+                  <span
+                    css={dragHandleStyle}
+                    draggable
+                    onDragStart={(event) => handleDragStart(event, index)}
+                    onDragEnd={handleDragEnd}
+                    title="Drag to reorder"
+                  >
+                    ⠿
+                  </span>
+                )}
                 <div css={rowInfoStyle}>
                   <span css={rowTitleStyle}>{titleText || "(untitled)"}</span>
                   {metaText && <span css={rowMetaStyle}>{metaText}</span>}

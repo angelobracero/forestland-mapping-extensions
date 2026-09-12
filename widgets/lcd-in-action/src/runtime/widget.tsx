@@ -2,7 +2,7 @@ import { type AllWidgetProps } from "jimu-core";
 import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import { getFieldValue, formatDateLong } from "widgets/shared-code/field-utils";
+import { getFieldValue, formatDateLong, resolveFieldName } from "widgets/shared-code/field-utils";
 import { CONTENT_ITEM_ID } from "widgets/shared-code/content-config";
 
 import {
@@ -72,6 +72,15 @@ function Widget(props: AllWidgetProps<any>) {
         query.where = "1=1";
         query.outFields = ["*"];
         query.returnGeometry = false;
+
+        // Matches the order set via content-admin's drag-to-reorder LCD
+        // tab -- falls back to whatever the service returns by default if
+        // this field doesn't exist yet.
+        const sortFieldName = resolveFieldName(layer, "sort_order");
+
+        if (sortFieldName) {
+          query.orderByFields = [`${sortFieldName} ASC`];
+        }
 
         const result = await layer.queryFeatures(query);
 

@@ -6,6 +6,9 @@ import {
   filterContainerStyle,
   fieldStyle,
   fieldLabelStyle,
+  contextChipsStyle,
+  contextChipStyle,
+  noMapsMessageStyle,
   modalDialogStyle,
   MODAL_BELOW_HEADER_CLASS,
   modalBelowHeaderCss,
@@ -26,9 +29,10 @@ type LayerFilterModalProps = {
   onLcNumberChange: (lcNumber: string) => void;
 };
 
-// The button that opens the filter, plus the filter popup itself (Region /
-// Province / LC Map Number selects). Purely presentational -- all of the
-// map/layer work happens in the change handlers passed down from widget.tsx.
+// The button that opens the filter, plus the filter popup itself (a
+// read-only Region/Province line and the LC Map Number select). Purely
+// presentational -- all of the map/layer work happens in the change
+// handlers passed down from widget.tsx.
 export function LayerFilterModal({
   isOpen,
   onOpen,
@@ -71,55 +75,45 @@ export function LayerFilterModal({
       >
         <ModalHeader toggle={onClose}>Choose a Layer</ModalHeader>
         <ModalBody>
+          {/* Region and Province are picked from the sidebar now (see
+              forestland-menu's Region -> Province browser), not here -- this
+              popup only needs to ask for the LC Map Number, plus a read-only
+              line confirming what the sidebar handed off. selectedRegion/
+              selectedProvince (and the regions/provinces lists, and
+              onRegionChange/onProvinceChange) are still accepted as props:
+              widget.tsx still needs that state for loading the right layer
+              and filtering comments. */}
           <div css={filterContainerStyle}>
-            <div css={fieldStyle}>
-              <label css={fieldLabelStyle}>Region</label>
-
-              <Select
-                value={selectedRegion}
-                onChange={(e) => onRegionChange(e.target.value)}
-                placeholder="Select a Region"
-              >
-                {regions.map((region) => (
-                  <Option key={region} value={region}>
-                    {region}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            <div css={fieldStyle}>
-              <label css={fieldLabelStyle}>Province</label>
-
-              <Select
-                value={selectedProvince}
-                disabled={!selectedRegion}
-                onChange={(e) => onProvinceChange(e.target.value)}
-                placeholder="Select a Province"
-              >
-                {provinces.map((province) => (
-                  <Option key={province} value={province}>
-                    {province}
-                  </Option>
-                ))}
-              </Select>
-            </div>
+            {selectedRegion && (
+              <div css={contextChipsStyle}>
+                <span css={contextChipStyle}>{selectedRegion}</span>
+                {selectedProvince && (
+                  <span css={contextChipStyle}>{selectedProvince}</span>
+                )}
+              </div>
+            )}
 
             <div css={fieldStyle}>
               <label css={fieldLabelStyle}>LC Map Number</label>
 
-              <Select
-                value={selectedLcNumber}
-                disabled={!selectedRegion}
-                onChange={(e) => onLcNumberChange(e.target.value)}
-                placeholder="Select a LC Map Number"
-              >
-                {lcMapNumbers.map((number) => (
-                  <Option key={number} value={number}>
-                    {number}
-                  </Option>
-                ))}
-              </Select>
+              {selectedProvince && lcMapNumbers.length === 0 ? (
+                <span css={noMapsMessageStyle}>
+                  No LC Map has been published for this province yet.
+                </span>
+              ) : (
+                <Select
+                  value={selectedLcNumber}
+                  disabled={!selectedRegion}
+                  onChange={(e) => onLcNumberChange(e.target.value)}
+                  placeholder="Select a LC Map Number"
+                >
+                  {lcMapNumbers.map((number) => (
+                    <Option key={number} value={number}>
+                      {number}
+                    </Option>
+                  ))}
+                </Select>
+              )}
             </div>
           </div>
         </ModalBody>

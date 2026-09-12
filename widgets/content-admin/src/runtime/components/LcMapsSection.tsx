@@ -14,7 +14,7 @@ import {
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { LC_MAP_CATALOG_ITEM_ID } from "widgets/shared-code/content-config";
 import { PHILIPPINE_REGIONS } from "widgets/shared-code/philippine-regions";
-import { PROVINCES_BY_REGION } from "../philippine-provinces";
+import { PROVINCES_BY_REGION } from "widgets/shared-code/philippine-provinces";
 
 import {
   sectionStyle,
@@ -29,7 +29,6 @@ import {
   rowMetaStyle,
   rowActionsStyle,
   rowActionButtonStyle,
-  editActionButtonStyle,
   deleteActionButtonStyle,
   formFieldStyle,
   formLabelStyle,
@@ -42,7 +41,11 @@ import {
   MODAL_BELOW_HEADER_CLASS,
   modalBelowHeaderCss,
 } from "../style";
-import { uploadAndPublishShapefile, type PublishStage } from "../lc-map-publish";
+import {
+  uploadAndPublishShapefile,
+  deletePortalItem,
+  type PublishStage,
+} from "../lc-map-publish";
 
 type LcMapRow = {
   objectId: number;
@@ -51,15 +54,10 @@ type LcMapRow = {
   lcNumber: string;
   itemId: string;
   // ArcGIS username of whoever published this layer -- set once at publish
-  // time, so a super admin can see who owns it (needed since deleting the
-  // real ArcGIS item later requires that owner's account or org-admin
-  // rights, not just being a super admin in this app).
+  // time, so removing it later can target that owner's account (needed
+  // since deleting a real ArcGIS item requires the item's own owner or
+  // org-admin rights, not just being a super admin in this app).
   owner: string;
-  // Soft-delete flag: hides the entry from the public LC Map filter without
-  // touching the real published layer. Only super admins see removed
-  // entries (below), and only here in this app -- the underlying ArcGIS
-  // item is untouched either way.
-  removed: boolean;
 };
 
 const PUBLISH_STAGE_LABEL: Record<PublishStage, string> = {
@@ -95,7 +93,10 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     try {
       const query = activeLayer.createQuery();
 
-      query.where = "1=1";
+      // Excludes any legacy soft-removed rows from before this table
+      // stopped setting that flag -- deleting now removes the row outright
+      // (see confirmDelete below), but old removed=1 rows may still exist.
+      query.where = "removed IS NULL OR removed <> 1";
       query.outFields = ["*"];
       query.returnGeometry = false;
 
@@ -108,7 +109,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         lcNumber: feature.attributes.lc_number ?? "",
         itemId: feature.attributes.item_id ?? "",
         owner: feature.attributes.owner ?? "",
-        removed: Number(feature.attributes.removed) === 1,
       }));
 
       setRows(items);
@@ -260,30 +260,26 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     setPendingDeleteRow(null);
   };
 
-  // Soft delete: only flips `removed` on the catalog row, so it stops
-  // showing up on the public site -- deliberately does NOT delete the
-  // published hosted feature layer itself. That's a separate, harder-to-
-  // reverse action on a real ArcGIS item, gated to super admins below (see
-  // the "Removed LC Maps" section), and it needs the item's actual owner
-  // account or ArcGIS org-admin rights to succeed at all.
+  // Permanently deletes the real ArcGIS item first (targeting its owner's
+  // account -- see deletePortalItem), then removes the catalog row. Done in
+  // that order deliberately: if the ArcGIS delete fails (e.g. the signed-in
+  // super admin isn't that item's owner and isn't an org admin either), the
+  // catalog row is left in place rather than pointing at a promise that
+  // never happened -- a stray still-published layer with no catalog row is
+  // a far smaller problem than a catalog row pointing at nothing.
   const confirmDelete = async () => {
     if (!layer || !pendingDeleteRow) return;
 
     setDeleting(true);
 
     try {
+      await deletePortalItem(pendingDeleteRow.owner, pendingDeleteRow.itemId);
+
       const result = await layer.applyEdits({
-        updateFeatures: [
-          {
-            attributes: {
-              [layer.objectIdField]: pendingDeleteRow.objectId,
-              removed: 1,
-            },
-          },
-        ],
+        deleteFeatures: [{ objectId: pendingDeleteRow.objectId }],
       });
 
-      const failed = result.updateFeatureResults?.find(
+      const failed = result.deleteFeatureResults?.find(
         (r) => r.objectId === pendingDeleteRow.objectId && r.error,
       );
 
@@ -292,7 +288,7 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       }
 
       enqueueNotification({
-        message: "LC Map removed from the public site.",
+        message: "LC Map deleted permanently.",
         severity: "success",
         placement: "bottom-left",
       });
@@ -301,10 +297,13 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
       await loadRows(layer);
     } catch (deleteError) {
-      console.error("Failed to remove LC Map catalog entry:", deleteError);
+      console.error("Failed to delete LC Map:", deleteError);
 
       enqueueNotification({
-        message: "Failed to remove LC Map.",
+        message:
+          deleteError instanceof Error
+            ? deleteError.message
+            : "Failed to delete LC Map.",
         severity: "error",
         placement: "bottom-left",
       });
@@ -312,49 +311,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       setDeleting(false);
     }
   };
-
-  const restoreRow = async (row: LcMapRow) => {
-    if (!layer) return;
-
-    try {
-      const result = await layer.applyEdits({
-        updateFeatures: [
-          { attributes: { [layer.objectIdField]: row.objectId, removed: 0 } },
-        ],
-      });
-
-      const failed = result.updateFeatureResults?.find(
-        (r) => r.objectId === row.objectId && r.error,
-      );
-
-      if (failed?.error) {
-        throw failed.error;
-      }
-
-      enqueueNotification({
-        message: "LC Map restored to the public site.",
-        severity: "success",
-        placement: "bottom-left",
-      });
-
-      await loadRows(layer);
-    } catch (restoreError) {
-      console.error("Failed to restore LC Map catalog entry:", restoreError);
-
-      enqueueNotification({
-        message: "Failed to restore LC Map.",
-        severity: "error",
-        placement: "bottom-left",
-      });
-    }
-  };
-
-  const activeRows = rows.filter((row) => !row.removed);
-  const removedRows = rows.filter((row) => row.removed);
-  const portalUrl = (getAppStore().getState().portalUrl || "https://www.arcgis.com").replace(
-    /\/$/,
-    "",
-  );
 
   return (
     <div css={sectionStyle}>
@@ -369,13 +325,13 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <div css={emptyStateStyle}>Loading...</div>
       ) : error ? (
         <div css={emptyStateStyle}>{error}</div>
-      ) : activeRows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div css={emptyStateStyle}>
           No LC Maps have been added yet. Click "+ Add New" to publish one.
         </div>
       ) : (
         <div css={rowListStyle}>
-          {activeRows.map((row) => (
+          {rows.map((row) => (
             <div key={row.objectId} css={rowItemStyle}>
               <div css={rowInfoStyle}>
                 <span css={rowTitleStyle}>
@@ -383,61 +339,23 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </span>
                 <span css={rowMetaStyle}>{row.itemId}</span>
               </div>
-              <div css={rowActionsStyle}>
-                <button
-                  type="button"
-                  css={[rowActionButtonStyle, deleteActionButtonStyle]}
-                  onClick={() => requestDelete(row)}
-                >
-                  Remove
-                </button>
-              </div>
+              {/* Deleting now permanently removes the real ArcGIS item
+                  (see confirmDelete), so it's limited to super admins --
+                  a content admin can still see every LC Map here, just not
+                  delete one. */}
+              {isSuperAdmin && (
+                <div css={rowActionsStyle}>
+                  <button
+                    type="button"
+                    css={[rowActionButtonStyle, deleteActionButtonStyle]}
+                    onClick={() => requestDelete(row)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
-        </div>
-      )}
-
-      {isSuperAdmin && (
-        <div css={sectionStyle}>
-          <div css={sectionHeaderStyle}>
-            <h3 css={sectionTitleStyle}>Removed LC Maps</h3>
-          </div>
-
-          {removedRows.length === 0 ? (
-            <div css={emptyStateStyle}>Nothing removed right now.</div>
-          ) : (
-            <div css={rowListStyle}>
-              {removedRows.map((row) => (
-                <div key={row.objectId} css={rowItemStyle}>
-                  <div css={rowInfoStyle}>
-                    <span css={rowTitleStyle}>
-                      {row.region} · {row.province} · {row.lcNumber}
-                    </span>
-                    <span css={rowMetaStyle}>
-                      {row.itemId} · Published by: {row.owner || "unknown"}
-                    </span>
-                  </div>
-                  <div css={rowActionsStyle}>
-                    <a
-                      css={[rowActionButtonStyle, editActionButtonStyle]}
-                      href={`${portalUrl}/home/item.html?id=${row.itemId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View in ArcGIS
-                    </a>
-                    <button
-                      type="button"
-                      css={[rowActionButtonStyle, editActionButtonStyle]}
-                      onClick={() => restoreRow(row)}
-                    >
-                      Restore
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -552,12 +470,12 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         css={modalDialogStyle}
         modalClassName={MODAL_BELOW_HEADER_CLASS}
       >
-        <ModalHeader toggle={cancelDelete}>Remove LC Map</ModalHeader>
+        <ModalHeader toggle={cancelDelete}>Delete LC Map</ModalHeader>
         <ModalBody>
           <p css={confirmDialogBodyStyle}>
-            Remove this entry from the public site? It stops appearing in the
-            LC Map filter -- the published layer itself stays in ArcGIS
-            Online, and a super admin can restore this entry later.
+            Permanently delete this LC Map? This deletes the actual published
+            layer in ArcGIS Online, not just this entry -- it cannot be
+            undone.
           </p>
         </ModalBody>
         <ModalFooter>
@@ -565,7 +483,7 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             Cancel
           </Button>
           <Button type="danger" onClick={confirmDelete} disabled={deleting}>
-            {deleting ? "Removing..." : "Remove"}
+            {deleting ? "Deleting..." : "Delete Permanently"}
           </Button>
         </ModalFooter>
       </Modal>

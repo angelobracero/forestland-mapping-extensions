@@ -55,7 +55,11 @@ function Widget(props: AllWidgetProps<any>) {
     try {
       const layer = await createLocalShapefileLayer(file);
 
-      map.add(layer);
+      // Inserted at the very bottom (index 0) instead of appended on top --
+      // map.add's default -- so a visitor's own shapefile never covers the
+      // official LC map or its comments, regardless of whether it was added
+      // before or after them.
+      map.add(layer, 0);
       addLocalLayer({ id: layer.id, label: file.name, layer });
 
       await layer.load();

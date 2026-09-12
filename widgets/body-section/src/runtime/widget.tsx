@@ -23,8 +23,9 @@ const homeBg = require("./assets/home-bg-hero.jpg");
 
 const heroTitleText = (
   <>
-    Forestland Evaluation &amp; Mapping Project: Land Classification Survey of
-    Unclassified Public Forests
+    Forestland Evaluation &amp; Mapping Project:
+    <br />
+    Land Classification Survey of Unclassified Public Forests
   </>
 );
 

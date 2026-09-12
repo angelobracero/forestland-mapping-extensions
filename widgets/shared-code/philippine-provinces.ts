@@ -4,6 +4,9 @@
 // cross-checked Region IX specifically against DILG/PhilAtlas -- Wikipedia's
 // summary initially misattributed Sulu to Region IX; it belongs to BARMM
 // only, which the province list below reflects.
+//
+// Used by content-admin (the Province choices when publishing a new LC Map)
+// and forestland-menu (the sidebar's Region -> Province browser).
 export const PROVINCES_BY_REGION: Record<string, string[]> = {
   // NCR has no provinces -- it's subdivided directly into 16 cities plus
   // Pateros (the region's one remaining municipality), so those stand in
@@ -29,7 +32,7 @@ export const PROVINCES_BY_REGION: Record<string, string[]> = {
   ],
   CAR: ["Abra", "Apayao", "Benguet", "Ifugao", "Kalinga", "Mountain Province"],
   "Region I": ["Ilocos Norte", "Ilocos Sur", "La Union", "Pangasinan"],
-  "Region II": ["Batanes", "Cagayan", "Nueva Vizcaya", "Quirino"],
+  "Region II": ["Batanes", "Cagayan", "Isabela", "Nueva Vizcaya", "Quirino"],
   "Region III": [
     "Aurora",
     "Bataan",

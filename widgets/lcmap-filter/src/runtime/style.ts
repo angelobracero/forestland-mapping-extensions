@@ -6,7 +6,9 @@ export const filterButtonStyle = css({
   alignItems: 'flex-start',
   gap: '2px',
   backgroundColor: '#fff',
-  borderRadius: 0,
+  // 10px matches the rounded-card radius used elsewhere in this app (e.g.
+  // view-feedbacks' comment list) -- was a hard square before.
+  borderRadius: '10px',
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.18)',
   border: 'none',
   padding: '12px 16px',
@@ -14,10 +16,11 @@ export const filterButtonStyle = css({
   minWidth: '180px',
   fontFamily:
     '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  transition: 'background 0.15s ease',
+  transition: 'background 0.15s ease, box-shadow 0.15s ease',
 
   '&:hover': {
     background: 'linear-gradient(90deg, #0b5e2e 0%, #0d7a3a 100%)',
+    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.24)',
 
     '& span': {
       color: '#fff',
@@ -27,7 +30,7 @@ export const filterButtonStyle = css({
 
 export const filterButtonLabelStyle = css({
   fontSize: '1.05rem',
-  fontWeight: 400,
+  fontWeight: 600,
   color: '#222',
 })
 
@@ -40,7 +43,11 @@ export const filterContainerStyle = css({
   display: 'flex',
   flexDirection: 'column',
   rowGap: '14px',
-  padding: '16px',
+  // No top padding -- ModalBody already has its own top padding, and
+  // stacking this on top of it left an oversized gap above the first
+  // child (especially noticeable now that it's the boxed Region/Province
+  // line in LayerFilterModal, not a plain label).
+  padding: '0 16px 16px',
 })
 
 export const fieldStyle = css({
@@ -51,8 +58,61 @@ export const fieldStyle = css({
 
 export const fieldLabelStyle = css({
   fontSize: '0.85rem',
-  fontWeight: 400,
+  // Matches content-admin's own form label weight (formLabelStyle) for a
+  // consistent look across the app's popups/forms.
+  fontWeight: 600,
   color: '#555',
+})
+
+// Shown in place of the LC Map Number select when the chosen Region/
+// Province has no LC Map published yet -- see LayerFilterModal. Styled
+// like the emptyStateStyle used across the other widgets (e.g.
+// local-layers-list, about) rather than a heavier callout, to stay
+// consistent with how this app already presents "nothing here yet".
+export const noMapsMessageStyle = css({
+  fontSize: '0.85rem',
+  color: '#888',
+})
+
+// Read-only confirmation of the Region/Province picked from the sidebar
+// (see LayerFilterModal) -- there to answer "did it actually populate?",
+// since those two are no longer editable dropdowns here. Styled as pill
+// chips, matching view-feedbacks' comment detail chips (same colors/shape)
+// for a consistent look across the app.
+export const contextChipsStyle = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px',
+})
+
+export const contextChipStyle = css({
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  color: '#0b5e2e',
+  backgroundColor: '#e6f3ea',
+  padding: '4px 12px',
+  borderRadius: '999px',
+})
+
+// Shown over the whole screen -- header included -- while handleLcNumberChange
+// is loading the selected LC Map + comment layer -- that step involves
+// several sequential network requests (portal item loads, registering data
+// sources, zooming), so without this a visitor could click a different
+// province/comment mid-load and race two loads against each other.
+// Rendered via a React portal to <body> in widget.tsx, not inline, so this
+// "fixed" overlay actually reaches the real viewport instead of being
+// trapped inside one Experience Builder layout panel.
+export const mapLoadingOverlayStyle = css({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'rgba(255, 255, 255, 0.55)',
+  zIndex: 999,
 })
 
 // Caps every popup to the space actually left below the app's 40px sticky

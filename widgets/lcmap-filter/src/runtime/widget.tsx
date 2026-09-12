@@ -1,19 +1,26 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
 import { useEffect, useRef, useState } from "react";
-import { enqueueNotification } from "jimu-ui";
+import { createPortal } from "react-dom";
+import { enqueueNotification, Loading } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import FormTemplate from "@arcgis/core/form/FormTemplate";
+import CodedValueDomain from "@arcgis/core/layers/support/CodedValueDomain";
 import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis";
 import { resolveFieldName } from "widgets/shared-code/field-utils";
-import { LC_MAP_CATALOG_ITEM_ID } from "widgets/shared-code/content-config";
+import {
+  LC_MAP_CATALOG_ITEM_ID,
+  OFFICE_OPTIONS_TABLE_ITEM_ID,
+} from "widgets/shared-code/content-config";
 import { PHILIPPINE_REGIONS } from "widgets/shared-code/philippine-regions";
 import { setCurrentLcMapLayer } from "widgets/shared-code/local-layers-store";
 import {
   type PendingCommentTarget,
   subscribeToPendingCommentTarget,
 } from "widgets/shared-code/comment-navigation-store";
+import { subscribeToPendingRegionTarget } from "widgets/shared-code/region-navigation-store";
 import { ensureLayerDataSource } from "./map-utils";
 import { LayerFilterModal } from "./components/LayerFilterModal";
+import { mapLoadingOverlayStyle } from "./style";
 
 type LcMap = {
   region: string;
@@ -28,6 +35,18 @@ const catalogLayer = new FeatureLayer({
   },
 });
 
+// Rows managed by content-admin's "Office Options" tab -- each row's `label`
+// becomes one choice in the comment form's Office dropdown below. "Others"
+// isn't a row here; it's always appended in code, since picking it also
+// reveals the office_other free-text field.
+const officeOptionsLayer = new FeatureLayer({
+  portalItem: {
+    id: OFFICE_OPTIONS_TABLE_ITEM_ID,
+  },
+});
+
+const OTHERS_OFFICE_OPTION = "Others";
+
 const COMMENT_LAYER_PORTAL_ITEM_ID = "f534c711fbdb4837a74ee79de867ffa4";
 
 // NOTE: these must exactly match the field names (including case) on the
@@ -36,6 +55,8 @@ const COMMENT_LAYER_PORTAL_ITEM_ID = "f534c711fbdb4837a74ee79de867ffa4";
 const REGION_FIELD = "region";
 const PROVINCE_FIELD = "province";
 const LC_NUMBER_FIELD = "lc_number";
+const OFFICE_FIELD = "office";
+const OFFICE_OTHER_FIELD = "office_other";
 
 const DRAWING_TOOL_BY_GEOMETRY_TYPE: Record<string, string> = {
   point: "esriFeatureEditToolPoint",
@@ -58,6 +79,7 @@ function getCurrentUserEmail(): string | null {
 
 function Widget(props: AllWidgetProps<any>) {
   const [lcMaps, setLcMaps] = useState<LcMap[]>([]);
+  const [officeOptions, setOfficeOptions] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [selectedProvince, setSelectedProvince] = useState<string>("");
   const [selectedLcNumber, setSelectedLcNumber] = useState<string>("");
@@ -67,6 +89,11 @@ function Widget(props: AllWidgetProps<any>) {
   );
   const [commentLayer, setCommentLayer] = useState<FeatureLayer | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  // Covers the whole map while handleLcNumberChange below is loading the
+  // selected LC Map + comment layer -- both the "pick a Region/Province,
+  // then an LC Number" flow and the "View on Map" comment flow end up
+  // calling that same function.
+  const [isMapLoading, setIsMapLoading] = useState(false);
   const [pendingTarget, setPendingTarget] = useState<PendingCommentTarget | null>(
     null,
   );
@@ -106,6 +133,32 @@ function Widget(props: AllWidgetProps<any>) {
     };
 
     loadCatalog();
+  }, []);
+
+  // LOAD OFFICE OPTIONS (see content-admin's "Office Options" tab)
+  useEffect(() => {
+    const loadOfficeOptions = async () => {
+      try {
+        await officeOptionsLayer.load();
+
+        const query = officeOptionsLayer.createQuery();
+
+        query.outFields = ["label"];
+        query.returnGeometry = false;
+
+        const result = await officeOptionsLayer.queryFeatures(query);
+
+        setOfficeOptions(
+          result.features
+            .map((feature) => feature.attributes.label)
+            .filter((label): label is string => Boolean(label)),
+        );
+      } catch (error) {
+        console.error("Failed to load Office options:", error);
+      }
+    };
+
+    loadOfficeOptions();
   }, []);
 
   // ==========================================================
@@ -183,6 +236,8 @@ function Widget(props: AllWidgetProps<any>) {
 
       return;
     }
+
+    setIsMapLoading(true);
 
     try {
       if (currentLcLayer) {
@@ -295,6 +350,29 @@ function Widget(props: AllWidgetProps<any>) {
 
       await newCommentLayer.load();
 
+      // Restricts the Office field to a dropdown (content-admin's "Office
+      // Options" table + "Others" always last) instead of the free-text
+      // input it'd otherwise get -- assigning a domain client-side like
+      // this doesn't touch the field's actual schema, just how this layer's
+      // own forms/popups present it.
+      const officeField = newCommentLayer.fields?.find(
+        (field) => field.name === OFFICE_FIELD,
+      );
+
+      if (officeField) {
+        officeField.domain = new CodedValueDomain({
+          name: OFFICE_FIELD,
+          codedValues: [...officeOptions, OTHERS_OFFICE_OPTION].map((option) => ({
+            name: option,
+            code: option,
+          })),
+        });
+      } else {
+        console.warn(
+          `Comment layer has no "${OFFICE_FIELD}" field; skipping the Office dropdown.`,
+        );
+      }
+
       const missingFields = [
         REGION_FIELD,
         PROVINCE_FIELD,
@@ -373,15 +451,42 @@ function Widget(props: AllWidgetProps<any>) {
 
       const READ_ONLY_EXPRESSION_NAME = "auto-populated-not-editable";
 
+      // Only shows office_other once "Others" is picked in the Office
+      // dropdown above -- re-evaluated live as the visitor fills the form
+      // in, same as any other Arcade-driven form rule.
+      const OFFICE_OTHER_VISIBLE_EXPRESSION_NAME = "office-is-others";
+
       const readOnlyFieldNames = new Set(
         ["editor", REGION_FIELD, PROVINCE_FIELD, LC_NUMBER_FIELD]
           .map((candidate) => resolveFieldName(newCommentLayer, candidate))
           .filter((name): name is string => Boolean(name)),
       );
 
+      // office_other otherwise lands wherever it happens to sit in the
+      // layer's own schema order (last, since it was added most recently)
+      // -- moved here to sit right after office instead, so the "please
+      // specify" box appears directly under the dropdown that reveals it.
       const formFields = (newCommentLayer.fields ?? []).filter(
         (field) => field.editable !== false,
       );
+      const officeOtherFieldIndex = formFields.findIndex(
+        (field) => field.name === OFFICE_OTHER_FIELD,
+      );
+      const officeFieldIndex = formFields.findIndex(
+        (field) => field.name === OFFICE_FIELD,
+      );
+
+      if (officeOtherFieldIndex !== -1 && officeFieldIndex !== -1) {
+        const [officeOtherField] = formFields.splice(officeOtherFieldIndex, 1);
+
+        formFields.splice(
+          // The office field's own index shifts down by one if
+          // office_other sat earlier in the array than it did.
+          officeFieldIndex - (officeOtherFieldIndex < officeFieldIndex ? 1 : 0) + 1,
+          0,
+          officeOtherField,
+        );
+      }
 
       newCommentLayer.formTemplate = new FormTemplate({
         title: newCommentLayer.title || "Comment",
@@ -391,6 +496,11 @@ function Widget(props: AllWidgetProps<any>) {
             expression: "false",
             returnType: "boolean",
           },
+          {
+            name: OFFICE_OTHER_VISIBLE_EXPRESSION_NAME,
+            expression: `$feature.${OFFICE_FIELD} == '${OTHERS_OFFICE_OPTION}'`,
+            returnType: "boolean",
+          },
         ],
         elements: formFields.map((field) => ({
           type: "field",
@@ -398,6 +508,9 @@ function Widget(props: AllWidgetProps<any>) {
           label: field.alias || field.name,
           ...(readOnlyFieldNames.has(field.name)
             ? { editableExpression: READ_ONLY_EXPRESSION_NAME }
+            : {}),
+          ...(field.name === OFFICE_OTHER_FIELD
+            ? { visibilityExpression: OFFICE_OTHER_VISIBLE_EXPRESSION_NAME }
             : {}),
         })),
       });
@@ -481,6 +594,8 @@ function Widget(props: AllWidgetProps<any>) {
 
     } catch (error) {
       console.error("FAILED TO LOAD LC MAP OR COMMENTS:", error);
+    } finally {
+      setIsMapLoading(false);
     }
   };
 
@@ -500,6 +615,25 @@ function Widget(props: AllWidgetProps<any>) {
         setPendingTarget(target);
         setSelectedRegion(target.region);
         setSelectedProvince(target.province);
+      }),
+    [],
+  );
+
+  // forestland-menu's sidebar (see widgets/shared-code/region-navigation-store)
+  // leaves a Region/Province here right before navigating, then this opens
+  // the filter popup with those two pre-selected -- LC Map Number is left
+  // blank for the visitor to pick themselves, unlike the comment-target flow
+  // above which also pins an exact LC Map Number and zooms to a comment.
+  useEffect(
+    () =>
+      subscribeToPendingRegionTarget((target) => {
+        setSelectedRegion(target.region);
+        setSelectedProvince(target.province);
+        // Otherwise a map picked for a previous Region/Province could stay
+        // selected (and shown on the map) even though it no longer matches
+        // the newly-arrived Region/Province.
+        setSelectedLcNumber("");
+        setIsFilterOpen(true);
       }),
     [],
   );
@@ -578,6 +712,26 @@ function Widget(props: AllWidgetProps<any>) {
         onProvinceChange={handleProvinceChange}
         onLcNumberChange={handleLcNumberChange}
       />
+
+      {/* =====================================================
+          LOADING OVERLAY: shown while handleLcNumberChange is
+          loading the selected LC Map + comment layer.
+          ===================================================== */}
+
+      {isMapLoading &&
+        createPortal(
+          // Rendered straight to <body> (instead of wherever this widget
+          // sits in Experience Builder's own layout containers) so this
+          // "fixed" overlay actually covers the whole screen -- including
+          // the sidebar -- rather than being trapped inside one layout
+          // panel. Also blocks clicking to a different province/comment
+          // mid-load, which would otherwise race two loads against
+          // each other.
+          <div css={mapLoadingOverlayStyle}>
+            <Loading text="Loading map…" />
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

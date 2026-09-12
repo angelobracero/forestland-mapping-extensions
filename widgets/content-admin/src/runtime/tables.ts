@@ -1,4 +1,5 @@
 import { ADMINS_TABLE_ITEM_ID, ADMINS_TABLE_LAYER_ID } from "widgets/shared-code/admin-auth";
+import { OFFICE_OPTIONS_TABLE_ITEM_ID } from "widgets/shared-code/content-config";
 import type { UploadKind } from "./media-upload";
 
 type FieldType = "text" | "textarea" | "date" | "number" | "select";
@@ -32,6 +33,11 @@ export type TableDef = {
   itemId?: string;
   layerId: number;
   fields: FieldDef[];
+  // When set, AdminTableSection sorts rows by this field and shows a drag
+  // handle for reordering them (persisted back into the same field) --
+  // GAD/LCD/About opt into this below; Office Options/Admins don't, so
+  // they keep the plain default/service order.
+  sortFieldCandidates?: string[];
 };
 
 export const TABLES: TableDef[] = [
@@ -39,6 +45,7 @@ export const TABLES: TableDef[] = [
     id: "gad",
     label: "GAD Activities",
     layerId: 0,
+    sortFieldCandidates: ["sort_order"],
     fields: [
       { key: "title", label: "Title", fieldCandidates: ["title"], type: "text" },
       { key: "activity_date", label: "Date", fieldCandidates: ["activity_date", "date"], type: "date" },
@@ -55,6 +62,7 @@ export const TABLES: TableDef[] = [
     id: "lcd",
     label: "LCD in Action Media",
     layerId: 1,
+    sortFieldCandidates: ["sort_order"],
     fields: [
       { key: "title", label: "Title", fieldCandidates: ["title"], type: "text" },
       {
@@ -83,6 +91,7 @@ export const TABLES: TableDef[] = [
     id: "about",
     label: "About AVPs",
     layerId: 2,
+    sortFieldCandidates: ["sort_order"],
     fields: [
       { key: "title", label: "Title", fieldCandidates: ["title"], type: "text" },
       { key: "description", label: "Description", fieldCandidates: ["description"], type: "textarea" },
@@ -93,6 +102,16 @@ export const TABLES: TableDef[] = [
         type: "text",
         uploadKind: "video",
       },
+    ],
+  },
+  {
+    id: "office-options",
+    label: "Office Options",
+    // Its own item, not CONTENT_ITEM_ID -- see OFFICE_OPTIONS_TABLE_ITEM_ID.
+    itemId: OFFICE_OPTIONS_TABLE_ITEM_ID,
+    layerId: 0,
+    fields: [
+      { key: "label", label: "Office", fieldCandidates: ["label"], type: "text" },
     ],
   },
 ];

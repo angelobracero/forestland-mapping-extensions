@@ -131,6 +131,29 @@ export const rowItemStyle = css({
   padding: '12px 16px',
 })
 
+// Dimmed while its own drag handle (dragHandleStyle) is being dragged, so
+// the row being moved reads as "lifted" rather than looking unchanged.
+export const rowItemDraggingStyle = css({
+  opacity: 0.5,
+})
+
+// Only shown on tables with sortFieldCandidates set (see AdminTableSection)
+// -- a fixed-width grip so rows' text doesn't shift depending on whether a
+// given table supports reordering.
+export const dragHandleStyle = css({
+  flexShrink: 0,
+  width: '20px',
+  fontSize: '1rem',
+  color: '#bbb',
+  cursor: 'grab',
+  userSelect: 'none',
+  textAlign: 'center',
+
+  '&:active': {
+    cursor: 'grabbing',
+  },
+})
+
 export const rowInfoStyle = css({
   display: 'flex',
   flexDirection: 'column',

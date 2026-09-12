@@ -203,3 +203,35 @@ export async function uploadAndPublishShapefile(
 
   return { itemId: serviceItemId };
 }
+
+// Permanently deletes a real ArcGIS item -- used by LcMapsSection's "Remove"
+// action, which deletes the actual published hosted feature layer, not just
+// a row in the catalog table. Deliberately targets the item's own owner
+// (row.owner in LcMapsSection, tracked at publish time for exactly this),
+// not whichever admin is currently signed in -- ArcGIS's delete endpoint is
+// scoped to /users/<owner>/items/<id>/delete regardless of caller, and only
+// succeeds if the signed-in account IS that owner, or has org-admin content
+// privileges over other users' items.
+export async function deletePortalItem(
+  ownerUsername: string,
+  itemId: string,
+): Promise<void> {
+  const state = getAppStore().getState();
+  const portalUrl = (state.portalUrl || "https://www.arcgis.com").replace(/\/$/, "");
+  const userContentUrl = `${portalUrl}/sharing/rest/content/users/${encodeURIComponent(ownerUsername)}`;
+
+  const formData = new FormData();
+
+  formData.append("f", "json");
+
+  const response = await esriRequest(`${userContentUrl}/items/${itemId}/delete`, {
+    method: "post",
+    body: formData,
+  });
+
+  if (!response.data?.success) {
+    throw new Error(
+      response.data?.error?.message || "Could not delete the item from ArcGIS.",
+    );
+  }
+}
