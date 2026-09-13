@@ -1,12 +1,14 @@
 import { type AllWidgetProps } from "jimu-core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { enqueueNotification } from "jimu-ui";
 import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis";
 import type Map from "@arcgis/core/Map";
+import type Layer from "@arcgis/core/layers/Layer";
 import {
   addLocalLayer,
   subscribeToLocalLayers,
 } from "widgets/shared-code/local-layers-store";
+import { LoadingOverlay } from "widgets/shared-code/LoadingOverlay";
 import { createLocalShapefileLayer } from "./local-shapefile-layer";
 import { previewButtonStyle, previewButtonLabelStyle, previewButtonSubtitleStyle } from "./style";
 
@@ -25,11 +27,19 @@ function Widget(props: AllWidgetProps<any>) {
   const [loading, setLoading] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
 
+  // Tracks lcmap-filter's current official LC map layer (registered in the
+  // shared store as the one non-removable entry) so newly added shapefiles
+  // can be positioned relative to it below -- kept in a ref, not state,
+  // since it's only read inside handleFileChange, not rendered.
+  const lcMapLayerRef = useRef<Layer | null>(null);
+
   useEffect(
     () =>
-      subscribeToLocalLayers((layers) =>
-        setAddedCount(layers.filter((item) => item.removable).length),
-      ),
+      subscribeToLocalLayers((layers) => {
+        setAddedCount(layers.filter((item) => item.removable).length);
+        lcMapLayerRef.current =
+          layers.find((item) => !item.removable)?.layer ?? null;
+      }),
     [],
   );
 
@@ -55,11 +65,17 @@ function Widget(props: AllWidgetProps<any>) {
     try {
       const layer = await createLocalShapefileLayer(file);
 
-      // Inserted at the very bottom (index 0) instead of appended on top --
-      // map.add's default -- so a visitor's own shapefile never covers the
-      // official LC map or its comments, regardless of whether it was added
-      // before or after them.
-      map.add(layer, 0);
+      // Inserted right at the LC map layer's current position (pushing it,
+      // and the comment layer lcmap-filter always keeps above it -- see
+      // its "Keep comments above LC Map" reorder -- both up by one) instead
+      // of appended on top (map.add's default) or always at the very
+      // bottom. That keeps both official layers on top no matter what, while
+      // still letting each newly added shapefile land above any shapefiles
+      // added earlier, instead of getting buried underneath them.
+      const lcMapLayer = lcMapLayerRef.current;
+      const lcMapIndex = lcMapLayer ? map.layers.indexOf(lcMapLayer) : -1;
+
+      map.add(layer, lcMapIndex === -1 ? 0 : lcMapIndex);
       addLocalLayer({ id: layer.id, label: file.name, layer });
 
       await layer.load();
@@ -121,6 +137,8 @@ function Widget(props: AllWidgetProps<any>) {
           }}
         />
       </label>
+
+      {loading && <LoadingOverlay text="Reading shapefile..." />}
     </>
   );
 }

@@ -101,7 +101,8 @@ type Step = {
   // Short screen recording to show instead -- takes priority over `image`
   // when both are set. Hosted in R2 (same as GAD/LCD/About media) rather
   // than bundled, since this project's build doesn't have a loader for
-  // video files. Autoplays on loop, muted, no controls.
+  // video files. Static preview as a card; real playback controls once
+  // zoomed (see MockBrowser/StepWalkthrough below).
   video?: string;
 };
 
@@ -212,13 +213,16 @@ function MockBrowser(props: {
   if (props.video) {
     return (
       <div css={videoCardStyle} onClick={props.onZoom}>
+        {/* Static preview, not autoplaying -- clicking opens the full-size
+            zoomed view below, which has real playback controls. Autoplaying
+            every step's video the moment the page loads (there can be ~9 of
+            them) wasted real bandwidth for something nobody was watching yet. */}
         <video
           css={videoElementStyle}
           src={props.video}
-          autoPlay
-          loop
           muted
           playsInline
+          preload="metadata"
         />
       </div>
     );
@@ -320,9 +324,7 @@ function StepWalkthrough(props: { steps: Step[] }) {
           <video
             css={imageOverlayImageStyle}
             src={zoomedStep.video}
-            autoPlay
-            loop
-            muted
+            controls
             playsInline
             onClick={(e) => e.stopPropagation()}
           />

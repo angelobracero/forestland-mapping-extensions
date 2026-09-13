@@ -110,6 +110,64 @@ export const filtersToggleCountStyle = css({
   fontWeight: 700,
 })
 
+// Segmented Unresolved/Resolved control (content admins only) -- like a
+// typical issue-tracker's Open/Closed tabs, instead of a toggle that
+// merges resolved comments into the same list.
+export const resolvedTabsStyle = css({
+  display: 'inline-flex',
+  alignSelf: 'flex-end',
+  border: '1px solid #ddd',
+  borderRadius: '8px',
+  overflow: 'hidden',
+})
+
+export const resolvedTabButtonStyle = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  background: '#fff',
+  border: 'none',
+  padding: '9px 16px',
+  fontSize: '0.85rem',
+  fontWeight: 600,
+  color: '#555',
+  cursor: 'pointer',
+  transition: 'background-color 0.15s ease, color 0.15s ease',
+
+  '&:not(:last-of-type)': {
+    borderRight: '1px solid #ddd',
+  },
+
+  '&:hover': {
+    backgroundColor: '#f7faf8',
+  },
+})
+
+export const resolvedTabButtonActiveStyle = css({
+  backgroundColor: '#0b5e2e',
+  color: '#fff',
+
+  '&:hover': {
+    backgroundColor: '#0b5e2e',
+  },
+})
+
+export const resolvedTabCountStyle = css({
+  fontSize: '0.78rem',
+  fontWeight: 700,
+  opacity: 0.75,
+})
+
+// Applied to a resolved comment's row instead of a text badge -- the row
+// sits inside commentsCardStyle, which already clips its children to a
+// 10px border-radius (see `overflow: hidden` there), so this plain
+// border automatically comes out rounded on the first/last row and
+// straight everywhere else, with no extra rounding needed here.
+export const resolvedItemAccentStyle = css({
+  borderLeft: '4px solid #0b5e2e',
+  paddingLeft: '16px',
+})
+
 export const chipFiltersStyle = css({
   display: 'flex',
   flexDirection: 'column',
@@ -245,26 +303,61 @@ export const commentHeaderRightStyle = css({
   gap: '10px',
 })
 
-export const deleteButtonStyle = css({
+export const commentIconButtonStyle = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '28px',
+  height: '28px',
+  flexShrink: 0,
   background: 'none',
   border: 'none',
-  padding: '2px 4px',
-  fontSize: '0.85rem',
-  lineHeight: 1,
   color: '#999',
   cursor: 'pointer',
-  borderRadius: '4px',
+  borderRadius: '6px',
   transition: 'color 0.15s ease, background-color 0.15s ease',
-
-  '&:hover': {
-    color: '#c0392b',
-    backgroundColor: '#fdecea',
-  },
 
   '&:disabled': {
     cursor: 'default',
     opacity: 0.6,
   },
+})
+
+export const deleteButtonStyle = css({
+  '&:hover': {
+    color: '#c0392b',
+    backgroundColor: '#fdecea',
+  },
+})
+
+export const resolveButtonStyle = css({
+  '&:hover': {
+    color: '#0b5e2e',
+    backgroundColor: '#e6f3ea',
+  },
+})
+
+export const commentIconStyle = css({
+  width: '16px',
+  height: '16px',
+  flexShrink: 0,
+
+  '& path': {
+    fill: 'currentColor',
+  },
+})
+
+export const resolvedBadgeStyle = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  color: '#0b5e2e',
+  backgroundColor: '#e6f3ea',
+  borderRadius: '999px',
+  padding: '2px 10px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.03em',
 })
 
 export const commentSubMetaStyle = css({
@@ -286,6 +379,17 @@ export const commentTextStyle = css({
   color: '#222',
   lineHeight: 1.6,
   margin: '8px 0 0',
+})
+
+// Wraps the portion of text matching the active search box query (see
+// HighlightedText in CommentList.tsx) -- only ever applied to the fields
+// search actually matches against (comment/editor), so a highlight
+// always explains why that comment is in the results.
+export const searchHighlightStyle = css({
+  backgroundColor: '#fff3b0',
+  color: 'inherit',
+  borderRadius: '2px',
+  padding: '0 1px',
 })
 
 // Enlarged read-only view of a single comment, opened by clicking its card.
@@ -377,10 +481,67 @@ export const attachmentLinkStyle = css({
   borderRadius: '999px',
   padding: '2px 8px',
   textDecoration: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
 
   '&:hover': {
     textDecoration: 'underline',
   },
+})
+
+// Full-screen preview for image attachments, opened instead of the
+// browser's own (small, black-background) image tab -- same overlay
+// pattern as gad-gallery/guides-and-tutorials's photo lightbox.
+export const attachmentOverlayStyle = css({
+  position: 'fixed',
+  top: '40px',
+  right: 0,
+  bottom: 0,
+  left: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px',
+  boxSizing: 'border-box',
+  // Higher than jimu-ui's own Modal (this overlay opens from inside the
+  // comment detail Modal, and both are now portaled to <body> as
+  // siblings -- see the createPortal call in CommentList.tsx -- so it
+  // needs to clearly outrank the Modal's z-index, not just the other
+  // in-widget lightboxes' 10000).
+  zIndex: 100000,
+  cursor: 'zoom-out',
+
+  '@keyframes attachmentOverlayFadeIn': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
+  animation: 'attachmentOverlayFadeIn 0.2s ease',
+})
+
+export const attachmentOverlayImageStyle = css({
+  maxWidth: '90vw',
+  maxHeight: 'calc(100dvh - 40px - 120px)',
+  objectFit: 'contain',
+  borderRadius: '8px',
+  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+  cursor: 'default',
+
+  '@keyframes attachmentOverlayZoomIn': {
+    from: { transform: 'scale(0.85)', opacity: 0 },
+    to: { transform: 'scale(1)', opacity: 1 },
+  },
+  animation: 'attachmentOverlayZoomIn 0.25s ease',
+})
+
+export const attachmentOverlayCaptionStyle = css({
+  color: '#fff',
+  textAlign: 'center',
+  fontSize: '0.9rem',
+  marginTop: '16px',
+  cursor: 'default',
 })
 
 export const emptyStateStyle = css({

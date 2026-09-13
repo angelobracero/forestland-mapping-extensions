@@ -175,6 +175,16 @@ export const rowMetaStyle = css({
   color: '#888',
 })
 
+export const rowMetaLinkStyle = css({
+  fontSize: '0.8rem',
+  color: '#0b5e2e',
+  textDecoration: 'none',
+
+  '&:hover': {
+    textDecoration: 'underline',
+  },
+})
+
 export const rowActionsStyle = css({
   display: 'flex',
   gap: '4px',

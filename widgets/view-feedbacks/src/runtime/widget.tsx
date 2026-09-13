@@ -11,7 +11,8 @@ import {
 } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { checkIsContentAdmin } from "widgets/shared-code/admin-auth";
-import { getFieldValue } from "widgets/shared-code/field-utils";
+import { getFieldValue, resolveFieldName } from "widgets/shared-code/field-utils";
+import { OFFICE_OPTIONS_TABLE_ITEM_ID } from "widgets/shared-code/content-config";
 
 import {
   pageStyle,
@@ -45,9 +46,16 @@ function Widget(props: AllWidgetProps<any>) {
   const [selectedProvinces, setSelectedProvinces] = useState<string[]>([]);
   const [selectedLcNumbers, setSelectedLcNumbers] = useState<string[]>([]);
   const [selectedOffices, setSelectedOffices] = useState<string[]>([]);
+  const [officeOptions, setOfficeOptions] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("all");
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [resolvedView, setResolvedView] = useState<"unresolved" | "resolved">(
+    "unresolved",
+  );
+  const [updatingResolvedId, setUpdatingResolvedId] = useState<number | null>(
+    null,
+  );
 
   // Only content admins (super admins, or anyone listed in the
   // app_admins table -- see widgets/shared-code/admin-auth.ts) get a
@@ -60,6 +68,12 @@ function Widget(props: AllWidgetProps<any>) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const commentLayerRef = useRef<FeatureLayer | null>(null);
+
+  // Set once loadComments() resolves it against the layer's real fields
+  // (see field-utils.resolveFieldName) -- null if the layer has no such
+  // field yet, in which case the "mark resolved" UI stays hidden instead
+  // of trying to write to a field that doesn't exist.
+  const resolvedFieldNameRef = useRef<string | null>(null);
 
   // LOAD COMMENTS FROM THE REAL COMMENT FEATURE LAYER
   useEffect(() => {
@@ -81,6 +95,15 @@ function Widget(props: AllWidgetProps<any>) {
 
         setCanDelete(await checkIsContentAdmin(currentUsername));
 
+        resolvedFieldNameRef.current =
+          resolveFieldName(commentLayer, "resolved") ?? null;
+
+        if (!resolvedFieldNameRef.current) {
+          console.warn(
+            'Comment layer has no "resolved" field yet; the mark-resolved feature is hidden until one is added.',
+          );
+        }
+
         const query = commentLayer.createQuery();
 
         query.where = "1=1";
@@ -96,6 +119,7 @@ function Widget(props: AllWidgetProps<any>) {
             objectId: attributes[commentLayer.objectIdField],
             editor: getFieldValue(attributes, "editor") ?? "",
             office: getFieldValue(attributes, "office") ?? "",
+            officeOther: getFieldValue(attributes, "office_other") ?? "",
             comment: getFieldValue(attributes, "comment", "comments") ?? "",
             region: getFieldValue(attributes, "region") ?? "",
             province: getFieldValue(attributes, "province") ?? "",
@@ -111,6 +135,7 @@ function Widget(props: AllWidgetProps<any>) {
               ),
             ),
             attachments: [],
+            resolved: Boolean(getFieldValue(attributes, "resolved")),
           };
         });
 
@@ -164,6 +189,43 @@ function Widget(props: AllWidgetProps<any>) {
     loadComments();
   }, []);
 
+  // LOAD OFFICE FILTER OPTIONS (see content-admin's "Office Options" tab).
+  // The Office filter chips are your predefined list, not whatever raw
+  // text happens to appear on submitted comments -- a visitor who picked
+  // "Others" on the comment form types their own office name into a
+  // separate office_other field (same as lcmap-filter's dropdown), so
+  // their comment's `office` value is just the literal word "Others";
+  // reaching a specific one like that is what the search box is for.
+  useEffect(() => {
+    const loadOfficeOptions = async () => {
+      try {
+        const officeOptionsLayer = new FeatureLayer({
+          portalItem: { id: OFFICE_OPTIONS_TABLE_ITEM_ID },
+        });
+
+        await officeOptionsLayer.load();
+
+        const query = officeOptionsLayer.createQuery();
+
+        query.outFields = ["label"];
+        query.returnGeometry = false;
+
+        const result = await officeOptionsLayer.queryFeatures(query);
+
+        setOfficeOptions(
+          result.features
+            .map((feature) => feature.attributes.label)
+            .filter((label): label is string => Boolean(label))
+            .sort(),
+        );
+      } catch (error) {
+        console.error("Failed to load Office options:", error);
+      }
+    };
+
+    loadOfficeOptions();
+  }, []);
+
   const regions = useMemo(
     () => [...new Set(comments.map((c) => c.region).filter(Boolean))].sort(),
     [comments],
@@ -189,11 +251,6 @@ function Widget(props: AllWidgetProps<any>) {
     return [...new Set(source.map((c) => c.lcNumber).filter(Boolean))].sort();
   }, [comments, selectedRegions, selectedProvinces]);
 
-  const offices = useMemo(
-    () => [...new Set(comments.map((c) => c.office).filter(Boolean))].sort(),
-    [comments],
-  );
-
   const activeChipFilterCount =
     selectedRegions.length +
     selectedProvinces.length +
@@ -209,12 +266,33 @@ function Widget(props: AllWidgetProps<any>) {
       dateRangePreset !== "all",
   );
 
+  // Only content admins with a "resolved" field on the layer (see
+  // resolvedFieldNameRef above) get the Unresolved/Resolved tabs --
+  // everyone else always sees the unresolved view.
+  const canManageResolved = canDelete && resolvedFieldNameRef.current !== null;
+  const effectiveResolvedView = canManageResolved ? resolvedView : "unresolved";
+
+  // Raw counts (unaffected by the other filters below) for the tab labels
+  // and the "Showing X of Y" footer's denominator.
+  const unresolvedTotal = useMemo(
+    () => comments.filter((c) => !c.resolved).length,
+    [comments],
+  );
+
+  const resolvedTotal = useMemo(
+    () => comments.filter((c) => c.resolved).length,
+    [comments],
+  );
+
   const filteredComments = useMemo(() => {
     const query = searchText.trim().toLowerCase();
     const dateCutoff =
       dateRangePreset === "all" ? null : Date.now() - DATE_RANGE_MS[dateRangePreset];
 
     return comments.filter((c) => {
+      if (effectiveResolvedView === "resolved" ? !c.resolved : c.resolved)
+        return false;
+
       if (selectedRegions.length > 0 && !selectedRegions.includes(c.region))
         return false;
 
@@ -237,7 +315,7 @@ function Widget(props: AllWidgetProps<any>) {
         return false;
 
       if (query) {
-        const haystack = `${c.comment} ${c.editor} ${c.office}`.toLowerCase();
+        const haystack = `${c.comment} ${c.editor} ${c.office} ${c.officeOther}`.toLowerCase();
 
         if (!haystack.includes(query)) return false;
       }
@@ -252,6 +330,7 @@ function Widget(props: AllWidgetProps<any>) {
     selectedLcNumbers,
     selectedOffices,
     dateRangePreset,
+    effectiveResolvedView,
   ]);
 
   const sortedComments = useMemo(() => {
@@ -309,6 +388,7 @@ function Widget(props: AllWidgetProps<any>) {
     setSelectedLcNumbers([]);
     setSelectedOffices([]);
     setDateRangePreset("all");
+    setResolvedView("unresolved");
   };
 
   const requestDeleteComment = (objectId: number) => {
@@ -362,6 +442,62 @@ function Widget(props: AllWidgetProps<any>) {
     }
   };
 
+  const toggleCommentResolved = async (comment: FeedbackComment) => {
+    const layer = commentLayerRef.current;
+    const resolvedFieldName = resolvedFieldNameRef.current;
+
+    if (!layer || !resolvedFieldName) return;
+
+    const nextResolved = !comment.resolved;
+
+    setUpdatingResolvedId(comment.objectId);
+
+    try {
+      const result = await layer.applyEdits({
+        updateFeatures: [
+          {
+            attributes: {
+              [layer.objectIdField]: comment.objectId,
+              [resolvedFieldName]: nextResolved ? 1 : 0,
+            },
+          },
+        ],
+      });
+
+      const failedResult = result.updateFeatureResults?.find(
+        (r) => r.objectId === comment.objectId && r.error,
+      );
+
+      if (failedResult?.error) {
+        throw failedResult.error;
+      }
+
+      setComments((current) =>
+        current.map((c) =>
+          c.objectId === comment.objectId
+            ? { ...c, resolved: nextResolved }
+            : c,
+        ),
+      );
+
+      enqueueNotification({
+        message: nextResolved ? "Comment marked resolved." : "Comment marked unresolved.",
+        severity: "success",
+        placement: "bottom-left",
+      });
+    } catch (updateError) {
+      console.error("Failed to update comment resolved status:", updateError);
+
+      enqueueNotification({
+        message: "Failed to update comment.",
+        severity: "error",
+        placement: "bottom-left",
+      });
+    } finally {
+      setUpdatingResolvedId(null);
+    }
+  };
+
   return (
     <Paper css={pageStyle} className="jimu-widget" component="main">
       <div css={containerStyle}>
@@ -388,7 +524,7 @@ function Widget(props: AllWidgetProps<any>) {
           regions={regions}
           provinces={provinces}
           lcNumbers={lcNumbers}
-          offices={offices}
+          offices={officeOptions}
           selectedRegions={selectedRegions}
           selectedProvinces={selectedProvinces}
           selectedLcNumbers={selectedLcNumbers}
@@ -399,8 +535,13 @@ function Widget(props: AllWidgetProps<any>) {
           onToggleOffice={toggleOffice}
           filtersActive={filtersActive}
           filteredCount={filteredComments.length}
-          totalCount={comments.length}
+          totalCount={effectiveResolvedView === "resolved" ? resolvedTotal : unresolvedTotal}
           onClearFilters={clearFilters}
+          canManageResolved={canManageResolved}
+          resolvedView={effectiveResolvedView}
+          onResolvedViewChange={setResolvedView}
+          unresolvedTotal={unresolvedTotal}
+          resolvedTotal={resolvedTotal}
         />
 
         {loading ? (
@@ -409,9 +550,11 @@ function Widget(props: AllWidgetProps<any>) {
           <div css={emptyStateStyle}>{error}</div>
         ) : sortedComments.length === 0 ? (
           <div css={emptyStateStyle}>
-            {filtersActive
-              ? "No feedback matches your filters."
-              : "No feedback submitted yet."}
+            {effectiveResolvedView === "resolved"
+              ? "No resolved comments yet."
+              : comments.length > 0
+                ? "No feedback matches your filters."
+                : "No feedback submitted yet."}
           </div>
         ) : (
           <CommentList
@@ -419,6 +562,10 @@ function Widget(props: AllWidgetProps<any>) {
             canDelete={canDelete}
             deletingId={deletingId}
             onRequestDelete={requestDeleteComment}
+            canManageResolved={canManageResolved}
+            updatingResolvedId={updatingResolvedId}
+            onToggleResolved={toggleCommentResolved}
+            searchText={searchText}
           />
         )}
       </div>

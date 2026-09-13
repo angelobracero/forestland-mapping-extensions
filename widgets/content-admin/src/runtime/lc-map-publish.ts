@@ -65,10 +65,18 @@ export type PublishResult = {
   itemId: string;
 };
 
-function getPortalContext(): { userContentUrl: string } {
+// Exported so other content-admin code (e.g. LcMapsSection's link to an
+// item's ArcGIS Online page) can build portal URLs without duplicating
+// this same fallback/trailing-slash handling a 4th time.
+export function getPortalUrl(): string {
   const state = getAppStore().getState();
-  const portalUrl = (state.portalUrl || "https://www.arcgis.com").replace(/\/$/, "");
-  const username = state.portalSelf?.user?.username;
+
+  return (state.portalUrl || "https://www.arcgis.com").replace(/\/$/, "");
+}
+
+function getPortalContext(): { userContentUrl: string } {
+  const portalUrl = getPortalUrl();
+  const username = getAppStore().getState().portalSelf?.user?.username;
 
   if (!username) {
     throw new Error("You must be signed in to publish a layer.");
@@ -196,29 +204,117 @@ export async function uploadAndPublishShapefile(
   shareFormData.append("org", "true");
   shareFormData.append("everyone", "false");
 
-  await esriRequest(`${userContentUrl}/items/${serviceItemId}/share`, {
-    method: "post",
-    body: shareFormData,
-  });
+  const shareResponse = await esriRequest(
+    `${userContentUrl}/items/${serviceItemId}/share`,
+    {
+      method: "post",
+      body: shareFormData,
+    },
+  );
+
+  // Unlike the earlier steps, this endpoint has no `success` field even
+  // when it works -- only an `error` field when it doesn't. Without this
+  // check, a failed share was silently ignored: the item still gets added
+  // to the LC Map catalog and reported as published, but stays invisible
+  // to the public since lcmap-filter relies entirely on it already being
+  // shared (see the comment above).
+  if (shareResponse.data?.error) {
+    throw new Error(
+      shareResponse.data.error?.message ||
+        "Could not share the new layer with the organization.",
+    );
+  }
 
   return { itemId: serviceItemId };
+}
+
+// Looks up who actually owns a published ArcGIS item, straight from the
+// item itself -- the LC Map catalog table doesn't store an owner field, so
+// deletePortalItem's required /users/<owner>/items/<id>/delete URL has to
+// be resolved fresh at delete time instead.
+export async function getItemOwner(itemId: string): Promise<string> {
+  const portalUrl = getPortalUrl();
+
+  const response = await esriRequest(`${portalUrl}/sharing/rest/content/items/${itemId}`, {
+    query: { f: "json" },
+  });
+
+  const owner: string | undefined = response.data?.owner;
+
+  if (!owner) {
+    throw new Error("Could not find who owns this item.");
+  }
+
+  return owner;
+}
+
+// Publishing a shapefile (see uploadAndPublishShapefile above) creates TWO
+// separate ArcGIS items: the originally uploaded shapefile, and the
+// published feature layer service -- only the service's id ends up in the
+// LC Map catalog table, so without this lookup the source shapefile item
+// was left behind forever, orphaned in the admin's ArcGIS content. ArcGIS
+// tracks this relationship itself (relationshipType Service2Data,
+// direction "forward" from the service to its source data), so this asks
+// for it fresh rather than needing a second id stored in the catalog.
+async function findSourceShapefileItemId(
+  portalUrl: string,
+  serviceItemId: string,
+): Promise<string | undefined> {
+  try {
+    const response = await esriRequest(
+      `${portalUrl}/sharing/rest/content/items/${serviceItemId}/relatedItems`,
+      {
+        query: {
+          f: "json",
+          relationshipType: "Service2Data",
+          direction: "forward",
+        },
+      },
+    );
+
+    return response.data?.relatedItems?.[0]?.id;
+  } catch (lookupError) {
+    console.error("Failed to look up the source shapefile item:", lookupError);
+
+    return undefined;
+  }
 }
 
 // Permanently deletes a real ArcGIS item -- used by LcMapsSection's "Remove"
 // action, which deletes the actual published hosted feature layer, not just
 // a row in the catalog table. Deliberately targets the item's own owner
-// (row.owner in LcMapsSection, tracked at publish time for exactly this),
-// not whichever admin is currently signed in -- ArcGIS's delete endpoint is
-// scoped to /users/<owner>/items/<id>/delete regardless of caller, and only
-// succeeds if the signed-in account IS that owner, or has org-admin content
-// privileges over other users' items.
+// (see getItemOwner above), not whichever admin is currently signed in --
+// ArcGIS's delete endpoint is scoped to /users/<owner>/items/<id>/delete
+// regardless of caller, and only succeeds if the signed-in account IS that
+// owner, or has org-admin content privileges over other users' items.
 export async function deletePortalItem(
   ownerUsername: string,
   itemId: string,
 ): Promise<void> {
-  const state = getAppStore().getState();
-  const portalUrl = (state.portalUrl || "https://www.arcgis.com").replace(/\/$/, "");
+  const portalUrl = getPortalUrl();
   const userContentUrl = `${portalUrl}/sharing/rest/content/users/${encodeURIComponent(ownerUsername)}`;
+
+  // Best-effort, and done before deleting the service below -- the
+  // relationship lookup needs the service item to still exist. A failure
+  // here (nothing found, or the request itself fails) leaves the source
+  // item behind rather than blocking the main delete, since the service
+  // being gone is what actually matters to the admin doing this.
+  const sourceItemId = await findSourceShapefileItemId(portalUrl, itemId);
+
+  if (sourceItemId) {
+    try {
+      const sourceFormData = new FormData();
+
+      sourceFormData.append("f", "json");
+
+      await esriRequest(`${userContentUrl}/items/${sourceItemId}/delete`, {
+        method: "post",
+        body: sourceFormData,
+      });
+    } catch (sourceDeleteError) {
+      console.error("Failed to delete the source shapefile item:", sourceDeleteError);
+    }
+  }
 
   const formData = new FormData();
 

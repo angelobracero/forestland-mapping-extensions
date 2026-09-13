@@ -1,7 +1,6 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { enqueueNotification, Loading } from "jimu-ui";
+import { enqueueNotification } from "jimu-ui";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import FormTemplate from "@arcgis/core/form/FormTemplate";
 import CodedValueDomain from "@arcgis/core/layers/support/CodedValueDomain";
@@ -18,9 +17,9 @@ import {
   subscribeToPendingCommentTarget,
 } from "widgets/shared-code/comment-navigation-store";
 import { subscribeToPendingRegionTarget } from "widgets/shared-code/region-navigation-store";
+import { LoadingOverlay } from "widgets/shared-code/LoadingOverlay";
 import { ensureLayerDataSource } from "./map-utils";
 import { LayerFilterModal } from "./components/LayerFilterModal";
-import { mapLoadingOverlayStyle } from "./style";
 
 type LcMap = {
   region: string;
@@ -110,10 +109,7 @@ function Widget(props: AllWidgetProps<any>) {
 
         const query = catalogLayer.createQuery();
 
-        // Excludes soft-removed entries (see content-admin's LcMapsSection)
-        // so a removed LC Map disappears from the public filter immediately,
-        // without touching the underlying published layer.
-        query.where = "removed IS NULL OR removed <> 1";
+        query.where = "1=1";
         query.outFields = ["region", "province", "lc_number", "item_id"];
         query.returnGeometry = false;
 
@@ -713,25 +709,11 @@ function Widget(props: AllWidgetProps<any>) {
         onLcNumberChange={handleLcNumberChange}
       />
 
-      {/* =====================================================
-          LOADING OVERLAY: shown while handleLcNumberChange is
-          loading the selected LC Map + comment layer.
-          ===================================================== */}
-
-      {isMapLoading &&
-        createPortal(
-          // Rendered straight to <body> (instead of wherever this widget
-          // sits in Experience Builder's own layout containers) so this
-          // "fixed" overlay actually covers the whole screen -- including
-          // the sidebar -- rather than being trapped inside one layout
-          // panel. Also blocks clicking to a different province/comment
-          // mid-load, which would otherwise race two loads against
-          // each other.
-          <div css={mapLoadingOverlayStyle}>
-            <Loading text="Loading map…" />
-          </div>,
-          document.body,
-        )}
+      {/* Shown while handleLcNumberChange loads the selected LC Map +
+          comment layer -- also blocks clicking a different
+          province/comment mid-load, which would otherwise race two
+          loads against each other. */}
+      {isMapLoading && <LoadingOverlay text="Loading map…" />}
     </>
   );
 }

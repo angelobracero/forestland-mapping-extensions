@@ -134,10 +134,7 @@ function Widget(props: AllWidgetProps<any>) {
 
         const query = catalogLayer.createQuery();
 
-        // Excludes soft-removed entries, matching lcmap-filter's own catalog
-        // query -- a removed LC Map shouldn't make its province look
-        // available here either.
-        query.where = "removed IS NULL OR removed <> 1";
+        query.where = "1=1";
         query.outFields = ["region", "province"];
         query.returnGeometry = false;
 

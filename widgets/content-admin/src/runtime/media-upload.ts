@@ -22,6 +22,13 @@ export async function deleteMediaFileByUrl(url: string): Promise<void> {
     body: JSON.stringify({ key }),
   });
 
+  // A non-2xx response (e.g. a 502/524 edge error page under load) isn't
+  // JSON, so calling .json() on it would throw a confusing raw
+  // "Unexpected token <" instead of a real error message.
+  if (!response.ok) {
+    throw new Error(`Could not delete file (server returned ${response.status}).`);
+  }
+
   const data = await response.json();
 
   if (!data.success) {
@@ -70,6 +77,14 @@ export async function uploadMediaFile(file: File): Promise<UploadResult> {
       size: file.size,
     }),
   });
+
+  // Same reasoning as deleteMediaFileByUrl above -- check for a non-JSON
+  // error response before trying to parse it as JSON.
+  if (!presignResponse.ok) {
+    throw new Error(
+      `Could not create upload URL (server returned ${presignResponse.status}).`,
+    );
+  }
 
   const presignData = await presignResponse.json();
 

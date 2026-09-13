@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { getAppStore } from "jimu-core";
 import {
   TextInput,
   Select,
@@ -15,6 +14,7 @@ import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { LC_MAP_CATALOG_ITEM_ID } from "widgets/shared-code/content-config";
 import { PHILIPPINE_REGIONS } from "widgets/shared-code/philippine-regions";
 import { PROVINCES_BY_REGION } from "widgets/shared-code/philippine-provinces";
+import { LoadingOverlay } from "widgets/shared-code/LoadingOverlay";
 
 import {
   sectionStyle,
@@ -26,13 +26,12 @@ import {
   rowItemStyle,
   rowInfoStyle,
   rowTitleStyle,
-  rowMetaStyle,
+  rowMetaLinkStyle,
   rowActionsStyle,
   rowActionButtonStyle,
   deleteActionButtonStyle,
   formFieldStyle,
   formLabelStyle,
-  nativeInputStyle,
   confirmDialogBodyStyle,
   uploadRowStyle,
   uploadButtonStyle,
@@ -44,6 +43,8 @@ import {
 import {
   uploadAndPublishShapefile,
   deletePortalItem,
+  getItemOwner,
+  getPortalUrl,
   type PublishStage,
 } from "../lc-map-publish";
 
@@ -53,11 +54,6 @@ type LcMapRow = {
   province: string;
   lcNumber: string;
   itemId: string;
-  // ArcGIS username of whoever published this layer -- set once at publish
-  // time, so removing it later can target that owner's account (needed
-  // since deleting a real ArcGIS item requires the item's own owner or
-  // org-admin rights, not just being a super admin in this app).
-  owner: string;
 };
 
 const PUBLISH_STAGE_LABEL: Record<PublishStage, string> = {
@@ -67,6 +63,31 @@ const PUBLISH_STAGE_LABEL: Record<PublishStage, string> = {
 };
 
 const SHAPEFILE_ZIP_MIME_TYPES = ".zip,application/zip,application/x-zip-compressed";
+
+// Strips everything but letters/digits -- ArcGIS's published *service* name
+// (as opposed to the freely-formatted item title) doesn't allow spaces or
+// most punctuation, and Province is free text (e.g. "Sorsogon-Albay"), so
+// this guarantees a safe name no matter what gets typed into the form.
+// Accented letters (e.g. the ñ in "Las Piñas") are normalized to their
+// plain equivalent first (ñ -> n) rather than just dropped -- NFD
+// normalization splits an accented character into its base letter plus a
+// separate combining accent mark, so stripping the accent mark alone
+// leaves the plain letter behind instead of losing it entirely.
+function toSafeNamePart(value: string): string {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "");
+}
+
+// Auto-derived instead of a free-text field an admin has to keep unique by
+// hand -- since it's built from LC Number + Province, and handleSaveForm's
+// own duplicate check already guarantees that combination is unique in the
+// catalog, this can't collide with another entry published from this form.
+function buildLayerName(lcNumber: string, province: string): string {
+  return `LC${toSafeNamePart(lcNumber)}_${toSafeNamePart(province)}`;
+}
 
 export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [layer, setLayer] = useState<FeatureLayer | null>(null);
@@ -78,7 +99,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [region, setRegion] = useState("");
   const [province, setProvince] = useState("");
   const [lcNumber, setLcNumber] = useState("");
-  const [layerName, setLayerName] = useState("");
   const [shapefile, setShapefile] = useState<File | null>(null);
   const [publishStage, setPublishStage] = useState<PublishStage | null>(null);
   const [saving, setSaving] = useState(false);
@@ -93,12 +113,12 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     try {
       const query = activeLayer.createQuery();
 
-      // Excludes any legacy soft-removed rows from before this table
-      // stopped setting that flag -- deleting now removes the row outright
-      // (see confirmDelete below), but old removed=1 rows may still exist.
-      query.where = "removed IS NULL OR removed <> 1";
+      query.where = "1=1";
       query.outFields = ["*"];
       query.returnGeometry = false;
+      // Newest first, so a just-added LC Map shows up at the top instead
+      // of the bottom of a potentially long, scrolled list.
+      query.orderByFields = [`${activeLayer.objectIdField} DESC`];
 
       const result = await activeLayer.queryFeatures(query);
 
@@ -108,7 +128,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         province: feature.attributes.province ?? "",
         lcNumber: feature.attributes.lc_number ?? "",
         itemId: feature.attributes.item_id ?? "",
-        owner: feature.attributes.owner ?? "",
       }));
 
       setRows(items);
@@ -158,7 +177,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     setRegion("");
     setProvince("");
     setLcNumber("");
-    setLayerName("");
     setShapefile(null);
     setIsFormOpen(true);
   };
@@ -172,9 +190,32 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const handleSaveForm = async () => {
     if (!layer) return;
 
-    if (!region.trim() || !province.trim() || !lcNumber.trim() || !layerName.trim()) {
+    if (!region.trim() || !province.trim() || !lcNumber.trim()) {
       enqueueNotification({
-        message: "Region, Province, LC Number, and Layer Name are all required.",
+        message: "Region, Province, and LC Number are all required.",
+        severity: "error",
+        placement: "bottom-left",
+      });
+
+      return;
+    }
+
+    // Catches this before spending an upload+publish on it, rather than
+    // letting ArcGIS reject the catalog row afterward with an opaque
+    // "Database error has occurred" (see LC_MAP_CATALOG_ITEM_ID's row
+    // history) and leaving a real ArcGIS item published with no catalog
+    // row pointing at it.
+    const isDuplicate = rows.some(
+      (row) =>
+        row.region.trim().toLowerCase() === region.trim().toLowerCase() &&
+        row.province.trim().toLowerCase() === province.trim().toLowerCase() &&
+        row.lcNumber.trim().toLowerCase() === lcNumber.trim().toLowerCase(),
+    );
+
+    if (isDuplicate) {
+      enqueueNotification({
+        message:
+          "An LC Map with this Region, Province, and LC Number already exists -- delete the existing one first if you want to replace it.",
         severity: "error",
         placement: "bottom-left",
       });
@@ -197,11 +238,9 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     try {
       const { itemId } = await uploadAndPublishShapefile(
         shapefile,
-        layerName.trim(),
+        buildLayerName(lcNumber, province),
         setPublishStage,
       );
-
-      const currentUsername = getAppStore().getState().portalSelf?.user?.username ?? "";
 
       const result = await layer.applyEdits({
         addFeatures: [
@@ -211,8 +250,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               province: province.trim(),
               lc_number: lcNumber.trim(),
               item_id: itemId,
-              owner: currentUsername,
-              removed: 0,
             },
           },
         ],
@@ -260,10 +297,11 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     setPendingDeleteRow(null);
   };
 
-  // Permanently deletes the real ArcGIS item first (targeting its owner's
-  // account -- see deletePortalItem), then removes the catalog row. Done in
-  // that order deliberately: if the ArcGIS delete fails (e.g. the signed-in
-  // super admin isn't that item's owner and isn't an org admin either), the
+  // Permanently deletes the real ArcGIS item first (looking up its current
+  // owner fresh -- see getItemOwner -- then targeting that owner's account,
+  // see deletePortalItem), then removes the catalog row. Done in that order
+  // deliberately: if the ArcGIS delete fails (e.g. the signed-in super
+  // admin isn't that item's owner and isn't an org admin either), the
   // catalog row is left in place rather than pointing at a promise that
   // never happened -- a stray still-published layer with no catalog row is
   // a far smaller problem than a catalog row pointing at nothing.
@@ -273,7 +311,9 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     setDeleting(true);
 
     try {
-      await deletePortalItem(pendingDeleteRow.owner, pendingDeleteRow.itemId);
+      const owner = await getItemOwner(pendingDeleteRow.itemId);
+
+      await deletePortalItem(owner, pendingDeleteRow.itemId);
 
       const result = await layer.applyEdits({
         deleteFeatures: [{ objectId: pendingDeleteRow.objectId }],
@@ -337,7 +377,14 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 <span css={rowTitleStyle}>
                   {row.region} · {row.province} · {row.lcNumber}
                 </span>
-                <span css={rowMetaStyle}>{row.itemId}</span>
+                <a
+                  css={rowMetaLinkStyle}
+                  href={`${getPortalUrl()}/home/item.html?id=${row.itemId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {row.itemId}
+                </a>
               </div>
               {/* Deleting now permanently removes the real ArcGIS item
                   (see confirmDelete), so it's limited to super admins --
@@ -415,11 +462,16 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
           <div css={formFieldStyle}>
             <label css={formLabelStyle}>Layer Name</label>
-            <TextInput
-              value={layerName}
-              onChange={(e) => setLayerName(e.target.value)}
-              placeholder="Name for the new hosted feature layer in ArcGIS Online"
-            />
+            {/* Auto-generated from LC Number + Province (see buildLayerName)
+                instead of free text -- guarantees a name that's both
+                ArcGIS-safe and, since it's tied to the same combination the
+                duplicate check above validates, never collides with
+                another entry published from this form. */}
+            <div css={currentValueStyle}>
+              {lcNumber.trim() && province.trim()
+                ? buildLayerName(lcNumber, province)
+                : "Fill in LC Number and Province to preview"}
+            </div>
           </div>
 
           <div css={formFieldStyle}>
@@ -487,6 +539,16 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Full-screen overlay so a multi-step publish (or a delete) is
+          obviously in progress, instead of the only feedback being the
+          small stage label buried in the form's Shapefile field. */}
+      {saving && (
+        <LoadingOverlay
+          text={publishStage ? PUBLISH_STAGE_LABEL[publishStage] : "Publishing..."}
+        />
+      )}
+      {deleting && <LoadingOverlay text="Deleting..." />}
     </div>
   );
 }

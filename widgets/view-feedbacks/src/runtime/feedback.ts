@@ -4,12 +4,17 @@ export type FeedbackComment = {
   objectId: number;
   editor: string;
   office: string;
+  // Free-text office name from the comment form's "Others" option -- only
+  // meaningful when office === "Others" (see lcmap-filter's OFFICE_FIELD/
+  // OFFICE_OTHER_FIELD). Not in the Office filter chips; findable by search.
+  officeOther: string;
   comment: string;
   region: string;
   province: string;
   lcNumber: string;
   createdDate: number | null;
   attachments: AttachmentInfo[];
+  resolved: boolean;
 };
 
 export type SortOrder = "newest" | "oldest";

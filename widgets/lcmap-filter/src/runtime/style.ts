@@ -94,27 +94,6 @@ export const contextChipStyle = css({
   borderRadius: '999px',
 })
 
-// Shown over the whole screen -- header included -- while handleLcNumberChange
-// is loading the selected LC Map + comment layer -- that step involves
-// several sequential network requests (portal item loads, registering data
-// sources, zooming), so without this a visitor could click a different
-// province/comment mid-load and race two loads against each other.
-// Rendered via a React portal to <body> in widget.tsx, not inline, so this
-// "fixed" overlay actually reaches the real viewport instead of being
-// trapped inside one Experience Builder layout panel.
-export const mapLoadingOverlayStyle = css({
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: 'rgba(255, 255, 255, 0.55)',
-  zIndex: 999,
-})
-
 // Caps every popup to the space actually left below the app's 40px sticky
 // header -- without this, a modal (which is centered against the full
 // viewport height) can grow tall enough to sit behind/under the header.

@@ -15,6 +15,7 @@ import {
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { resolveFieldName } from "widgets/shared-code/field-utils";
 import { CONTENT_ITEM_ID } from "widgets/shared-code/content-config";
+import { LoadingOverlay } from "widgets/shared-code/LoadingOverlay";
 
 import {
   sectionStyle,
@@ -740,6 +741,16 @@ export function AdminTableSection({ tableDef }: { tableDef: TableDef }) {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Full-screen overlay so a save/upload/delete in progress is
+          obvious, instead of the only feedback being a small label change
+          buried inside a button or form field. */}
+      {(saving || uploadingFieldKey !== null) && (
+        <LoadingOverlay
+          text={uploadingFieldKey !== null ? "Uploading..." : "Saving..."}
+        />
+      )}
+      {deleting && <LoadingOverlay text="Deleting..." />}
     </div>
   );
 }

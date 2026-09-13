@@ -7,6 +7,10 @@ import {
   filterLabelStyle,
   filtersToggleStyle,
   filtersToggleCountStyle,
+  resolvedTabsStyle,
+  resolvedTabButtonStyle,
+  resolvedTabButtonActiveStyle,
+  resolvedTabCountStyle,
   chipFiltersStyle,
   chipGroupStyle,
   chipStyle,
@@ -41,6 +45,11 @@ type FeedbackFiltersProps = {
   filteredCount: number;
   totalCount: number;
   onClearFilters: () => void;
+  canManageResolved: boolean;
+  resolvedView: "unresolved" | "resolved";
+  onResolvedViewChange: (view: "unresolved" | "resolved") => void;
+  unresolvedTotal: number;
+  resolvedTotal: number;
 };
 
 export function FeedbackFilters({
@@ -69,6 +78,11 @@ export function FeedbackFilters({
   filteredCount,
   totalCount,
   onClearFilters,
+  canManageResolved,
+  resolvedView,
+  onResolvedViewChange,
+  unresolvedTotal,
+  resolvedTotal,
 }: FeedbackFiltersProps) {
   return (
     <div>
@@ -120,6 +134,33 @@ export function FeedbackFilters({
             <span css={filtersToggleCountStyle}>{activeChipFilterCount}</span>
           )}
         </button>
+
+        {canManageResolved && (
+          <div css={resolvedTabsStyle}>
+            <button
+              type="button"
+              css={[
+                resolvedTabButtonStyle,
+                resolvedView === "unresolved" && resolvedTabButtonActiveStyle,
+              ]}
+              onClick={() => onResolvedViewChange("unresolved")}
+            >
+              Unresolved
+              <span css={resolvedTabCountStyle}>{unresolvedTotal}</span>
+            </button>
+            <button
+              type="button"
+              css={[
+                resolvedTabButtonStyle,
+                resolvedView === "resolved" && resolvedTabButtonActiveStyle,
+              ]}
+              onClick={() => onResolvedViewChange("resolved")}
+            >
+              Resolved
+              <span css={resolvedTabCountStyle}>{resolvedTotal}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {filtersExpanded && (
@@ -144,45 +185,52 @@ export function FeedbackFilters({
             </div>
           </div>
 
-          <div css={filterFieldStyle}>
-            <label css={filterLabelStyle}>Province</label>
-            <div css={chipGroupStyle}>
-              {provinces.map((province) => {
-                const isSelected = selectedProvinces.includes(province);
+          {/* Only revealed once a Region is picked -- avoids dumping every
+              province across every region into one wall of chips, and
+              makes the Region -> Province -> LC Number hierarchy obvious. */}
+          {selectedRegions.length > 0 && (
+            <div css={filterFieldStyle}>
+              <label css={filterLabelStyle}>Province</label>
+              <div css={chipGroupStyle}>
+                {provinces.map((province) => {
+                  const isSelected = selectedProvinces.includes(province);
 
-                return (
-                  <button
-                    key={province}
-                    type="button"
-                    css={[chipStyle, isSelected && chipActiveStyle]}
-                    onClick={() => onToggleProvince(province)}
-                  >
-                    {province}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={province}
+                      type="button"
+                      css={[chipStyle, isSelected && chipActiveStyle]}
+                      onClick={() => onToggleProvince(province)}
+                    >
+                      {province}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div css={filterFieldStyle}>
-            <label css={filterLabelStyle}>LC Map Number</label>
-            <div css={chipGroupStyle}>
-              {lcNumbers.map((lcNumber) => {
-                const isSelected = selectedLcNumbers.includes(lcNumber);
+          {selectedProvinces.length > 0 && (
+            <div css={filterFieldStyle}>
+              <label css={filterLabelStyle}>LC Map Number</label>
+              <div css={chipGroupStyle}>
+                {lcNumbers.map((lcNumber) => {
+                  const isSelected = selectedLcNumbers.includes(lcNumber);
 
-                return (
-                  <button
-                    key={lcNumber}
-                    type="button"
-                    css={[chipStyle, isSelected && chipActiveStyle]}
-                    onClick={() => onToggleLcNumber(lcNumber)}
-                  >
-                    {lcNumber}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={lcNumber}
+                      type="button"
+                      css={[chipStyle, isSelected && chipActiveStyle]}
+                      onClick={() => onToggleLcNumber(lcNumber)}
+                    >
+                      {lcNumber}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div css={filterFieldStyle}>
             <label css={filterLabelStyle}>Office</label>
