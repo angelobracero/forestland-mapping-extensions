@@ -48,9 +48,9 @@ const features = [
   },
   {
     icon: "\u{1F50D}",
-    title: "Region and Province Filters",
+    title: "Region → Province Sidebar Browser",
     description:
-      "Narrow down LC maps and feedback by Region, then Province, so you only see what's relevant to your area.",
+      "Pick your Region, then Province, from the sidebar -- it jumps you straight to that area's Proposed LC Maps page with the LC Map Number picker already open.",
   },
   {
     icon: "\u{1F4E4}",
@@ -108,20 +108,12 @@ type Step = {
 
 const steps: Step[] = [
   {
-    icon: "\u{1F5FA}\u{FE0F}",
-    caption: "Proposed LC Maps page",
-    title: "Go to “Proposed LC Maps”",
-    description:
-      "Open the Proposed LC Maps page from the main menu. This loads the interactive map along with the filter panel.",
-    video: "https://files.angelobracero.com/uploads/videos/3b003799-6ea0-4edb-b678-7284dd9d0e00.mp4",
-  },
-  {
     icon: "\u{1F4CD}",
-    caption: "Region ▾ → Province ▾ → LC Map Number ▾",
-    title: "Select a Region, Province, and LC Map Number",
+    caption: "Sidebar → Region ▾ → Province → LC Map Number ▾",
+    title: "Pick a Region, Province, and LC Map Number",
     description:
-      "Use the three dropdowns to narrow down to the exact LC map you want to review: pick a Region first, then a Province, then the LC Map Number. Each choice updates the options below it, and picking the LC Map Number loads that map onto the view and zooms to its extent automatically.",
-    video: "https://files.angelobracero.com/uploads/videos/f3b99adc-eb45-4f5e-92ca-14c8c78761da.mp4",
+      "Open the “Region” section at the bottom of the sidebar, click your Region to reveal its provinces, then click your Province -- this takes you straight to the Proposed LC Maps page with a “Choose a Layer” popup already showing your Region and Province. Pick the LC Map Number from the dropdown to load that map onto the view and zoom to its extent automatically.",
+    video: "https://files.angelobracero.com/uploads/videos/48c0e32e-2fae-4f5b-9b67-7712b5a51c7c.mp4",
   },
   {
     icon: "\u{1F4E4}",
@@ -129,7 +121,7 @@ const steps: Step[] = [
     title: "Add Your Own Shapefile (Optional)",
     description:
       "Click “Add Own Layer” and choose a zipped shapefile from your computer to add it to the map for comparison -- this happens entirely in your browser, so it's visible only to you and is never uploaded or saved anywhere.",
-    video: "https://files.angelobracero.com/uploads/videos/a346033e-758d-44c0-ba18-de01be782732.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/edb24dd8-70be-4b76-8479-5cde4630ad9d.mp4",
   },
   {
     icon: "\u{1F5C2}\u{FE0F}",
@@ -137,7 +129,7 @@ const steps: Step[] = [
     title: "Manage Layers in the List",
     description:
       "The Layers on Map list shows the official LC map plus any shapefiles you've added. Click a layer's name to zoom to it, or click Remove to take one of your own layers off the map -- the official LC map can't be removed from there, only your own uploads.",
-    video: "https://files.angelobracero.com/uploads/videos/19ab8fac-db5b-4f39-b824-562230ddfdea.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/4ab6a253-9313-4029-951f-fd63760b4225.mp4",
   },
   {
     icon: "\u{1F4AC}",
@@ -145,7 +137,7 @@ const steps: Step[] = [
     title: "Review the Map and Existing Comments",
     description:
       "Comments already submitted by other reviewers appear as points on the map, alongside the LC map boundaries.",
-    video: "https://files.angelobracero.com/uploads/videos/95a605da-ffd4-4d67-8e10-9f8003493f68.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/d0f3104f-8c63-4e63-8e18-217dfa15165f.mp4",
   },
   {
     icon: "\u{270F}\u{FE0F}",
@@ -153,7 +145,7 @@ const steps: Step[] = [
     title: "Add Your Comment",
     description:
       "Click on the area you want to comment on, then fill in your Office, Email, and Comment. Your name and the region/province/LC map number are filled in for you automatically, based on your account and the map you selected. If you're drawing a shape (like a polygon or line) instead of a single point, double-click to finish it. Once submitted, your comment is saved and will appear in the View Feedbacks page, grouped and searchable by province.",
-    video: "https://files.angelobracero.com/uploads/videos/e400ce04-4c9d-4a9f-a93a-d8369db3aaf7.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/f56ca6ce-b14a-444d-b877-828a9fa81d66.mp4",
   },
 ];
 
@@ -164,23 +156,23 @@ const viewFeedbackSteps: Step[] = [
     title: "Go to “View Feedbacks”",
     description:
       "Open the View Feedbacks page from the main menu to see every comment submitted on the Proposed LC Maps.",
-    video: "https://files.angelobracero.com/uploads/videos/eab6ff1a-2288-4bdb-bc3c-89c0da75d195.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/6c7db260-8f19-4d5b-aa30-11227f0d29ec.mp4",
   },
   {
     icon: "\u{1F50D}",
-    caption: "Search + Region / Province / LC Map filters",
+    caption: "Search · More Filters · Sort · Date Range",
     title: "Narrow It Down",
     description:
-      "Type into Search to match comment text, editor, or office, or click the Region, Province, and LC Map Number filter pills to zero in on exactly what you're looking for. You can select more than one of each.",
-    video: "https://files.angelobracero.com/uploads/videos/43e55bd2-70f7-4568-a15e-75f32e312e31.mp4",
+      "Type into Search to match comment text, editor, or office -- matches are highlighted right in the results. Click “More Filters” to reveal Region, Province, LC Map Number, and Office chips (picking a Region reveals its provinces, and picking a Province reveals its LC Map Numbers); you can select more than one of each, and combine them with Sort by date and Date range. “Clear filters” resets everything.",
+    video: "https://files.angelobracero.com/uploads/videos/0ca7527a-65ba-45a5-b97a-4355d396ba67.mp4",
   },
   {
     icon: "\u{1F4AC}",
-    caption: "Editor · Office · LC Map · Date",
+    caption: "Editor · Office · LC Map · Date · Attachments",
     title: "Read a Comment",
     description:
-      "Each comment shows who submitted it, their office, which LC map it's about, and when, along with the full comment text. Click a comment to open it enlarged for easier reading.",
-    video: "https://files.angelobracero.com/uploads/videos/163c4d81-f215-4904-95a5-e7e86f6f64da.mp4",
+      "Each comment shows who submitted it, their office, which LC map it's about, and when, along with the full comment text. Click a comment to open it enlarged for easier reading. If it has supporting photos or files attached, they appear as clickable chips below it -- a photo opens a full-size preview right on the page, and a non-photo file opens in a new tab.",
+    video: "https://files.angelobracero.com/uploads/videos/6c81bd2c-fb9e-44b6-bf47-93abeb7e3169.mp4",
   },
   {
     icon: "\u{1F5FA}\u{FE0F}",
@@ -188,15 +180,7 @@ const viewFeedbackSteps: Step[] = [
     title: "Jump to a Comment on the Map",
     description:
       "Inside the enlarged comment view, click “View on Map” to go straight to that comment's Proposed LC Map -- it automatically selects the right Region, Province, and LC Map Number, then zooms in on that exact comment.",
-    video: "https://files.angelobracero.com/uploads/videos/c40a3990-b174-49c1-95af-e81f34bd3c20.mp4",
-  },
-  {
-    icon: "\u{1F4CE}",
-    caption: "Photos And Files",
-    title: "Check Attachments",
-    description:
-      "If a comment has supporting photos or files attached, they appear as clickable links right below it.",
-    video: "https://files.angelobracero.com/uploads/videos/82499f5c-f3a5-4305-9f2c-d1045bf539ce.mp4",
+    video: "https://files.angelobracero.com/uploads/videos/94d36522-3fef-42c0-975d-5903c463e191.mp4",
   },
 ];
 

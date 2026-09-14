@@ -17,7 +17,7 @@ import { getAppStore } from "jimu-core";
 // worked for the account that folder was created in and failed with "folder
 // not found" for every other admin. Looking it up by name (and creating it
 // if that admin doesn't have it yet) works the same for any account.
-const UPLOAD_FOLDER_NAME = "Forestland Evaluation & Mapping Project";
+const UPLOAD_FOLDER_NAME = "LC_MAP_LAYERS";
 
 // Finds this admin's own copy of UPLOAD_FOLDER_NAME (folders are per-user,
 // so it's normal for a different admin not to have one yet), creating it if

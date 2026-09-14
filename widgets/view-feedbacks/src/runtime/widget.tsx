@@ -57,7 +57,7 @@ function Widget(props: AllWidgetProps<any>) {
     null,
   );
 
-  // Only content admins (super admins, or anyone listed in the
+  // Only content admins (hardcoded accounts, or anyone listed in the
   // app_admins table -- see widgets/shared-code/admin-auth.ts) get a
   // delete option on each comment. This is checked against the signed-in
   // user's exact AGOL username (from Experience Builder's own app state),

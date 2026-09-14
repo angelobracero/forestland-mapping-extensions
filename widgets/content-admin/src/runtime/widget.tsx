@@ -1,10 +1,7 @@
 import { type AllWidgetProps, getAppStore } from "jimu-core";
 import { useEffect, useState } from "react";
 import { Paper } from "jimu-ui";
-import {
-  SUPER_ADMIN_USERNAMES,
-  checkIsContentAdmin,
-} from "widgets/shared-code/admin-auth";
+import { checkIsContentAdmin } from "widgets/shared-code/admin-auth";
 
 import {
   containerStyle,
@@ -32,7 +29,6 @@ function Widget(props: AllWidgetProps<any>) {
   const [authStatus, setAuthStatus] = useState<"checking" | "authorized" | "denied">(
     "checking",
   );
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +39,6 @@ function Widget(props: AllWidgetProps<any>) {
 
       if (!cancelled) {
         setAuthStatus(isAdmin ? "authorized" : "denied");
-        setIsSuperAdmin(Boolean(currentUsername && SUPER_ADMIN_USERNAMES.includes(currentUsername)));
       }
     };
 
@@ -72,7 +67,7 @@ function Widget(props: AllWidgetProps<any>) {
     );
   }
 
-  const visibleTables = isSuperAdmin ? [...TABLES, ADMINS_TABLE] : TABLES;
+  const visibleTables = [...TABLES, ADMINS_TABLE];
   const tabs = [
     ...visibleTables.map((table) => ({ id: table.id, label: table.label })),
     { id: LC_MAPS_TAB_ID, label: "LC Maps" },
@@ -108,7 +103,7 @@ function Widget(props: AllWidgetProps<any>) {
         </div>
 
         {activeTableId === LC_MAPS_TAB_ID ? (
-          <LcMapsSection isSuperAdmin={isSuperAdmin} />
+          <LcMapsSection />
         ) : (
           <AdminTableSection
             key={activeTable?.id ?? visibleTables[0].id}

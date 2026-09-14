@@ -66,13 +66,13 @@ const SHAPEFILE_ZIP_MIME_TYPES = ".zip,application/zip,application/x-zip-compres
 
 // Strips everything but letters/digits -- ArcGIS's published *service* name
 // (as opposed to the freely-formatted item title) doesn't allow spaces or
-// most punctuation, and Province is free text (e.g. "Sorsogon-Albay"), so
-// this guarantees a safe name no matter what gets typed into the form.
-// Accented letters (e.g. the ñ in "Las Piñas") are normalized to their
-// plain equivalent first (ñ -> n) rather than just dropped -- NFD
-// normalization splits an accented character into its base letter plus a
-// separate combining accent mark, so stripping the accent mark alone
-// leaves the plain letter behind instead of losing it entirely.
+// most punctuation, and Province names (e.g. "Metro Manila", "Las Piñas")
+// have both, so this guarantees a safe name regardless. Accented letters
+// (e.g. the ñ in "Las Piñas") are normalized to their plain equivalent
+// first (ñ -> n) rather than just dropped -- NFD normalization splits an
+// accented character into its base letter plus a separate combining
+// accent mark, so stripping the accent mark alone leaves the plain letter
+// behind instead of losing it entirely.
 function toSafeNamePart(value: string): string {
   return value
     .trim()
@@ -89,7 +89,7 @@ function buildLayerName(lcNumber: string, province: string): string {
   return `LC${toSafeNamePart(lcNumber)}_${toSafeNamePart(province)}`;
 }
 
-export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export function LcMapsSection() {
   const [layer, setLayer] = useState<FeatureLayer | null>(null);
   const [rows, setRows] = useState<LcMapRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -386,21 +386,17 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                   {row.itemId}
                 </a>
               </div>
-              {/* Deleting now permanently removes the real ArcGIS item
-                  (see confirmDelete), so it's limited to super admins --
-                  a content admin can still see every LC Map here, just not
-                  delete one. */}
-              {isSuperAdmin && (
-                <div css={rowActionsStyle}>
-                  <button
-                    type="button"
-                    css={[rowActionButtonStyle, deleteActionButtonStyle]}
-                    onClick={() => requestDelete(row)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
+              {/* Deleting now permanently removes the real ArcGIS item --
+                  see confirmDelete. */}
+              <div css={rowActionsStyle}>
+                <button
+                  type="button"
+                  css={[rowActionButtonStyle, deleteActionButtonStyle]}
+                  onClick={() => requestDelete(row)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -446,13 +442,6 @@ export function LcMapsSection({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </Option>
               ))}
             </Select>
-            {/* Still free text -- a proposed map can span more than one
-                province, so picking from the list above isn't required. */}
-            <TextInput
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              placeholder="Or type a custom value / combination, e.g. Sorsogon-Albay"
-            />
           </div>
 
           <div css={formFieldStyle}>

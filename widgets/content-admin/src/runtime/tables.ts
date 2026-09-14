@@ -116,9 +116,8 @@ export const TABLES: TableDef[] = [
   },
 ];
 
-// Only shown to super admins (see SUPER_ADMIN_USERNAMES in
-// widgets/shared-code/admin-auth.ts) -- this is what lets them add/remove
-// the content-only admins who show up in checkIsContentAdmin's table lookup.
+// Lets admins add/remove the accounts that show up in checkIsContentAdmin's
+// table lookup (see widgets/shared-code/admin-auth.ts).
 export const ADMINS_TABLE: TableDef = {
   id: "admins",
   label: "Admins",

@@ -137,7 +137,7 @@ export const stepRowStyle = css({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '28px',
+  gap: '40px',
 })
 
 // A small "mock browser" card used as a stand-in for a real screenshot.

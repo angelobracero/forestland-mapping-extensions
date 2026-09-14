@@ -3,15 +3,15 @@ import { resolveFieldName } from "./field-utils";
 
 // These exact ArcGIS accounts always get content-admin access, regardless
 // of what's in the app_admins table below -- hardcoded so they can never
-// be locked out even if that table is empty or unreachable. Only these
-// accounts can add/remove rows in that table themselves (see
-// content-admin/src/runtime/widget.tsx). Checked against the "Username"
-// field on their profile, not their display name or email.
-export const SUPER_ADMIN_USERNAMES = ["albracero"];
+// be locked out even if that table is empty or unreachable. Checked
+// against the "Username" field on their profile, not their display name
+// or email.
+export const ADMIN_USERNAMES = ["albracero", "lcd_fem_project"];
 
-// Additional content admins (content-only -- they can edit GAD/LCD/About
-// and delete comments, but can't manage this list themselves) are looked
-// up from this table at runtime.
+// Additional content admins are looked up from this table at runtime.
+// There is only one admin tier -- every admin, hardcoded or from this
+// table, can edit GAD/LCD/About, publish/delete LC Maps, delete comments,
+// and manage this table itself.
 export const ADMINS_TABLE_ITEM_ID = "b49704966b6944b68ebe3eaa9a0d4596";
 export const ADMINS_TABLE_LAYER_ID = 0;
 
@@ -20,7 +20,7 @@ export async function checkIsContentAdmin(
 ): Promise<boolean> {
   if (!username) return false;
 
-  if (SUPER_ADMIN_USERNAMES.includes(username)) return true;
+  if (ADMIN_USERNAMES.includes(username)) return true;
 
   try {
     const adminsLayer = new FeatureLayer({
